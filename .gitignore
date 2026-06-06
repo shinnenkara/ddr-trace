@@ -52,3 +52,4 @@ next-env.d.ts
 
 # db
 .temp
+temp/seed.sql
