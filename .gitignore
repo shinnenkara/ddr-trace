@@ -51,5 +51,4 @@ next-env.d.ts
 !.env.example
 
 # db
-.temp
-temp/seed.sql
+db/temp/
