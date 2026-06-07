@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  arcadeScoreSchema,
-  stageSchema,
-} from "./log-play-schema";
+import { arcadeScoreSchema, stageSchema } from "./log-play-schema";
 
 export const exScoreSchema = z.preprocess(
   (val) => (val === "" || val === null || val === undefined ? null : val),

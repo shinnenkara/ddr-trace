@@ -13,11 +13,26 @@ export const DIFFICULTY_COLOR_LEGEND: Record<
   DifficultyColor,
   { label: string; difficulties: string[] }
 > = {
-  green: { label: "Beginner", difficulties: ["Beginner", "(?) Beginner", "(?) Beginner (unused)"] },
-  blue: { label: "Basic", difficulties: ["Basic", "(?) Basic", "(?) Basic (unused)"] },
-  yellow: { label: "Difficult", difficulties: ["Difficult", "(?) Difficult", "(?) Difficult (unused)"] },
-  red: { label: "Expert", difficulties: ["Expert", "(?) Expert", "(?) Expert (unused)"] },
-  purple: { label: "Challenge", difficulties: ["Challenge", "(?) Challenge", "(?) Challenge (unused)"] },
+  green: {
+    label: "Beginner",
+    difficulties: ["Beginner", "(?) Beginner", "(?) Beginner (unused)"],
+  },
+  blue: {
+    label: "Basic",
+    difficulties: ["Basic", "(?) Basic", "(?) Basic (unused)"],
+  },
+  yellow: {
+    label: "Difficult",
+    difficulties: ["Difficult", "(?) Difficult", "(?) Difficult (unused)"],
+  },
+  red: {
+    label: "Expert",
+    difficulties: ["Expert", "(?) Expert", "(?) Expert (unused)"],
+  },
+  purple: {
+    label: "Challenge",
+    difficulties: ["Challenge", "(?) Challenge", "(?) Challenge (unused)"],
+  },
 };
 
 export function difficultyColorToLabels(color: DifficultyColor): string[] {

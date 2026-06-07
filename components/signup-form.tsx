@@ -1,86 +1,82 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { toast } from "sonner"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { toast } from "sonner";
 
-import { cn } from "@/lib/utils"
-import { signUp } from "@/lib/auth-client"
-import { useDictionary } from "@/lib/i18n/dictionary-provider"
-import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils";
+import { signUp } from "@/lib/auth-client";
+import { useDictionary } from "@/lib/i18n/dictionary-provider";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Field,
   FieldDescription,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 
-function renderLegalText(
-  template: string,
-  terms: string,
-  privacy: string,
-) {
-  const parts = template.split(/(\{terms\}|\{privacy\})/)
+function renderLegalText(template: string, terms: string, privacy: string) {
+  const parts = template.split(/(\{terms\}|\{privacy\})/);
   return parts.map((part, index) => {
     if (part === "{terms}") {
       return (
         <a key={index} href="#">
           {terms}
         </a>
-      )
+      );
     }
     if (part === "{privacy}") {
       return (
         <a key={index} href="#">
           {privacy}
         </a>
-      )
+      );
     }
-    return part
-  })
+    return part;
+  });
 }
 
 export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const dict = useDictionary()
-  const t = dict.auth.signup
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const dict = useDictionary();
+  const t = dict.auth.signup;
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const formData = new FormData(event.currentTarget)
-    const name = String(formData.get("name"))
-    const email = String(formData.get("email"))
-    const password = String(formData.get("password"))
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const name = String(formData.get("name"));
+    const email = String(formData.get("email"));
+    const password = String(formData.get("password"));
 
-    setLoading(true)
+    setLoading(true);
     const { error } = await signUp.email({
       name,
       email,
       password,
       callbackURL: "/",
-    })
-    setLoading(false)
+    });
+    setLoading(false);
 
     if (error) {
-      toast.error(error.message || t.error)
-      return
+      toast.error(error.message || t.error);
+      return;
     }
 
-    toast.success(t.success)
-    router.push(`/verify-email?email=${encodeURIComponent(email)}`)
+    toast.success(t.success);
+    router.push(`/verify-email?email=${encodeURIComponent(email)}`);
   }
 
   return (
@@ -132,8 +128,7 @@ export function SignupForm({
                   {loading ? t.submitting : t.submit}
                 </Button>
                 <FieldDescription className="text-center">
-                  {t.hasAccount}{" "}
-                  <Link href="/login">{t.signInLink}</Link>
+                  {t.hasAccount} <Link href="/login">{t.signInLink}</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>
@@ -144,5 +139,5 @@ export function SignupForm({
         {renderLegalText(t.legal, t.terms, t.privacy)}
       </FieldDescription>
     </div>
-  )
+  );
 }

@@ -20,9 +20,7 @@ export async function hasStaleSessionCookie(): Promise<boolean> {
 export async function deleteAuthSessionCookies(): Promise<void> {
   const cookieStore = await cookies();
   for (const cookie of cookieStore.getAll()) {
-    if (
-      AUTH_COOKIE_PREFIXES.some((prefix) => cookie.name.startsWith(prefix))
-    ) {
+    if (AUTH_COOKIE_PREFIXES.some((prefix) => cookie.name.startsWith(prefix))) {
       cookieStore.delete(cookie.name);
     }
   }

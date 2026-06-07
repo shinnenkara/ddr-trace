@@ -1,20 +1,20 @@
-import { Suspense } from "react"
-import Link from "next/link"
-import { redirect } from "next/navigation"
-import { LoginForm } from "@/components/login-form"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { LayoutBottomIcon } from "@hugeicons/core-free-icons"
-import { getDictionary } from "@/lib/i18n/get-dictionary"
-import { getLocale } from "@/lib/i18n/get-locale"
-import { hasStaleSessionCookie } from "@/lib/auth/clear-stale-session-cookie"
+import { Suspense } from "react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { LoginForm } from "@/components/login-form";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { LayoutBottomIcon } from "@hugeicons/core-free-icons";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
+import { getLocale } from "@/lib/i18n/get-locale";
+import { hasStaleSessionCookie } from "@/lib/auth/clear-stale-session-cookie";
 
 export default async function LoginPage() {
   if (await hasStaleSessionCookie()) {
-    redirect("/api/auth/clear-stale-session")
+    redirect("/api/auth/clear-stale-session");
   }
 
-  const locale = await getLocale()
-  const dict = await getDictionary(locale)
+  const locale = await getLocale();
+  const dict = await getDictionary(locale);
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
@@ -37,5 +37,5 @@ export default async function LoginPage() {
         </Suspense>
       </div>
     </div>
-  )
+  );
 }

@@ -30,11 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": [
-    "node_modules",
-    "components/track-food",
-    "lib/food",
-    "lib/food-match",
-    "lib/food-capture"
-  ]
+  "exclude": ["node_modules"]
 }

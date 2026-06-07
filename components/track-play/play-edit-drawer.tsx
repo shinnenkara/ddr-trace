@@ -31,7 +31,10 @@ export function PlayEditDrawer({
   const dict = useDictionary();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(true);
-  const [editState, editAction, editPending] = useActionState(editPlayAction, {});
+  const [editState, editAction, editPending] = useActionState(
+    editPlayAction,
+    {},
+  );
   const [deletePending, startDelete] = useTransition();
 
   useEffect(() => {
@@ -110,7 +113,9 @@ export function PlayEditDrawer({
                 : dict.track.edit.delete}
             </Button>
             <Button type="submit" disabled={editPending || deletePending}>
-              {editPending ? dict.track.edit.submitting : dict.track.edit.submit}
+              {editPending
+                ? dict.track.edit.submitting
+                : dict.track.edit.submit}
             </Button>
           </DrawerFooter>
         </form>

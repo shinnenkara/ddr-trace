@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  DIFFICULTY_COLORS,
-  type DifficultyColor,
-} from "./difficulty-colors";
+import { DIFFICULTY_COLORS, type DifficultyColor } from "./difficulty-colors";
 import {
   type DdrParsedEntry,
   type DdrScreenParseResult,

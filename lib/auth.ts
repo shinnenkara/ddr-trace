@@ -4,12 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { getDb } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
-import {
-  account,
-  session,
-  user,
-  verification,
-} from "@/lib/db/schema";
+import { account, session, user, verification } from "@/lib/db/schema";
 
 /**
  * Build a request-scoped better-auth instance.

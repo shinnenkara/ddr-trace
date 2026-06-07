@@ -5,10 +5,7 @@ import { getSessionUser } from "@/lib/api/get-session-user";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getUserPlays } from "@/lib/user-played-songs/get-user-plays";
-import {
-  PlaysEmptyState,
-  PlaysTable,
-} from "./_components/plays-table";
+import { PlaysEmptyState, PlaysTable } from "./_components/plays-table";
 
 export default async function TrackPage() {
   const user = await getSessionUser();

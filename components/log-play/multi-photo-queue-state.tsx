@@ -107,7 +107,8 @@ export function MultiPhotoQueueState({
                   ...entry,
                   status: "error",
                   error:
-                    response.error ?? dict.logPlay.photo.multiQueue.uploadFailed,
+                    response.error ??
+                    dict.logPlay.photo.multiQueue.uploadFailed,
                   errorKind: response.errorKind,
                   result: undefined,
                 }
@@ -150,7 +151,9 @@ export function MultiPhotoQueueState({
             break;
           }
 
-          const item = itemsRef.current.find((entry) => entry.id === capture.id);
+          const item = itemsRef.current.find(
+            (entry) => entry.id === capture.id,
+          );
           await uploadCapture(
             item ?? { ...capture, status: "queued", hint: "" },
           );
@@ -277,7 +280,9 @@ export function MultiPhotoQueueState({
                     />
                   ) : null}
                   {item.error ? (
-                    <p className="mt-1 text-xs text-destructive">{item.error}</p>
+                    <p className="mt-1 text-xs text-destructive">
+                      {item.error}
+                    </p>
                   ) : null}
                   {item.result ? (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -348,8 +353,6 @@ function StatusIcon({ status }: { status: QueueStatus }) {
         />
       );
     default:
-      return (
-        <span className="size-2 rounded-full bg-muted-foreground/40" />
-      );
+      return <span className="size-2 rounded-full bg-muted-foreground/40" />;
   }
 }

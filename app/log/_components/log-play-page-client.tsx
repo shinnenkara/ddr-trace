@@ -39,7 +39,9 @@ export function LogPlayPageClient() {
           <Card>
             <CardHeader>
               <CardTitle>{dict.logPlay.manual.title}</CardTitle>
-              <CardDescription>{dict.logPlay.manual.description}</CardDescription>
+              <CardDescription>
+                {dict.logPlay.manual.description}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <ManualPlayForm />
@@ -51,7 +53,9 @@ export function LogPlayPageClient() {
           <Card>
             <CardHeader>
               <CardTitle>{dict.logPlay.photo.title}</CardTitle>
-              <CardDescription>{dict.logPlay.photo.description}</CardDescription>
+              <CardDescription>
+                {dict.logPlay.photo.description}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Button onClick={() => setShowPhotoDrawer(true)}>

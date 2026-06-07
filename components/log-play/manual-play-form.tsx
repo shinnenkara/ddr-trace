@@ -144,7 +144,9 @@ export function ManualPlayForm() {
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="speed_modifier">{dict.logPlay.manual.speedLabel}</Label>
+          <Label htmlFor="speed_modifier">
+            {dict.logPlay.manual.speedLabel}
+          </Label>
           <Input
             id="speed_modifier"
             name="speed_modifier"
@@ -165,9 +167,7 @@ export function ManualPlayForm() {
         />
       </div>
 
-      {state.error && (
-        <p className="text-sm text-destructive">{state.error}</p>
-      )}
+      {state.error && <p className="text-sm text-destructive">{state.error}</p>}
 
       <Button type="submit" disabled={pending || !selectedSong}>
         {pending ? dict.logPlay.manual.submitting : dict.logPlay.manual.submit}

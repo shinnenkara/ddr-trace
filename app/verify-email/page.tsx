@@ -1,52 +1,52 @@
-"use client"
+"use client";
 
-import { Suspense, useState } from "react"
-import Link from "next/link"
-import { useSearchParams } from "next/navigation"
-import { toast } from "sonner"
+import { Suspense, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
-import { authClient } from "@/lib/auth-client"
-import { useDictionary } from "@/lib/i18n/dictionary-provider"
-import { Button } from "@/components/ui/button"
+import { authClient } from "@/lib/auth-client";
+import { useDictionary } from "@/lib/i18n/dictionary-provider";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 
 function VerifyEmailContent() {
-  const dict = useDictionary()
-  const t = dict.auth.verifyEmail
-  const searchParams = useSearchParams()
-  const email = searchParams.get("email") ?? ""
-  const [loading, setLoading] = useState(false)
+  const dict = useDictionary();
+  const t = dict.auth.verifyEmail;
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email") ?? "";
+  const [loading, setLoading] = useState(false);
 
   const description = email
     ? t.description.replace(
         "{email}",
         t.descriptionWithEmail.replace("{email}", email),
       )
-    : t.description.replace("{email}", "")
+    : t.description.replace("{email}", "");
 
   async function resend() {
     if (!email) {
-      toast.error(t.noEmail)
-      return
+      toast.error(t.noEmail);
+      return;
     }
-    setLoading(true)
+    setLoading(true);
     const { error } = await authClient.sendVerificationEmail({
       email,
       callbackURL: "/",
-    })
-    setLoading(false)
+    });
+    setLoading(false);
 
     if (error) {
-      toast.error(error.message || t.resendError)
-      return
+      toast.error(error.message || t.resendError);
+      return;
     }
-    toast.success(t.resendSuccess)
+    toast.success(t.resendSuccess);
   }
 
   return (
@@ -64,7 +64,7 @@ function VerifyEmailContent() {
         </Button>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export default function VerifyEmailPage() {
@@ -74,5 +74,5 @@ export default function VerifyEmailPage() {
         <VerifyEmailContent />
       </Suspense>
     </div>
-  )
+  );
 }

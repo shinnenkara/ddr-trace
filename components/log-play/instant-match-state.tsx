@@ -73,11 +73,14 @@ export function InstantMatchState({ capture, onRetake, onMatch }: Props) {
           </div>
         </div>
       </div>
-      {error && (
-        <p className="px-4 text-sm text-destructive">{error}</p>
-      )}
+      {error && <p className="px-4 text-sm text-destructive">{error}</p>}
       <DrawerFooter className="mt-2 grid grid-cols-2 gap-4 pt-0">
-        <Button onClick={onRetake} variant="outline" disabled={pending} type="button">
+        <Button
+          onClick={onRetake}
+          variant="outline"
+          disabled={pending}
+          type="button"
+        >
           {dict.logPlay.photo.retake}
         </Button>
         <Button type="submit" disabled={pending}>

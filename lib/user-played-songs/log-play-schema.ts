@@ -5,7 +5,10 @@ export const arcadeScoreSchema = z.coerce
   .number()
   .int()
   .min(0, "Score must be at least 0")
-  .max(MAX_ARCADE_SCORE, `Score must be at most ${MAX_ARCADE_SCORE.toLocaleString()}`);
+  .max(
+    MAX_ARCADE_SCORE,
+    `Score must be at most ${MAX_ARCADE_SCORE.toLocaleString()}`,
+  );
 
 export const stageSchema = z.coerce
   .number()

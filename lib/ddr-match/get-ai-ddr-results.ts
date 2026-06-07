@@ -41,8 +41,13 @@ ${difficultyColorLegendForPrompt()}
 If the image is NOT a DDR final results screen, or text is unreadable, return status "error" with error_kind "content".
 For temporary failures (blur, glare making read impossible but likely valid screen), return status "error" with error_kind "transient".`;
 
-function throwAiError(message: string, errorKind: "content" | "transient"): never {
-  const err = new Error(message) as Error & { errorKind?: "content" | "transient" };
+function throwAiError(
+  message: string,
+  errorKind: "content" | "transient",
+): never {
+  const err = new Error(message) as Error & {
+    errorKind?: "content" | "transient";
+  };
   err.errorKind = errorKind;
   throw err;
 }
@@ -67,7 +72,10 @@ export async function parseResultsScreen(
           {
             type: "image",
             image: capture.capture_base64,
-            mediaType: capture.mime as "image/webp" | "image/jpeg" | "image/png",
+            mediaType: capture.mime as
+              | "image/webp"
+              | "image/jpeg"
+              | "image/png",
           },
         ],
       },

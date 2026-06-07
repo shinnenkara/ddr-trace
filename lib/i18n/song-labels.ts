@@ -1,10 +1,7 @@
 import type { Song } from "@/lib/db/schema";
 import type { Dictionary } from "./dictionary-provider";
 
-export function formatSongType(
-  type: Song["type"],
-  dict: Dictionary,
-): string {
+export function formatSongType(type: Song["type"], dict: Dictionary): string {
   return dict.songs.type[type];
 }
 

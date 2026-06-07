@@ -34,7 +34,8 @@ export function PlayDetailClient({ play, history }: Props) {
   const [isEditing, setIsEditing] = useState(false);
 
   const personalBest = Math.max(...history.map((entry) => entry.arcadeScore));
-  const latestScore = history[history.length - 1]?.arcadeScore ?? play.arcadeScore;
+  const latestScore =
+    history[history.length - 1]?.arcadeScore ?? play.arcadeScore;
 
   return (
     <div className="flex flex-col gap-8">
@@ -48,8 +49,7 @@ export function PlayDetailClient({ play, history }: Props) {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {play.song.artist} · {formatSongType(play.song.type, dict)} ·{" "}
-            {formatDifficulty(play.song.difficulty, dict)} · ★
-            {play.song.rating}
+            {formatDifficulty(play.song.difficulty, dict)} · ★{play.song.rating}
           </p>
         </div>
         <Button onClick={() => setIsEditing(true)}>

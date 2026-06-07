@@ -31,10 +31,7 @@ export async function getUserPlays(
       .orderBy(desc(userPlayedSongs.playedAt))
       .limit(limit)
       .offset(offset),
-    db
-      .select({ total: count() })
-      .from(userPlayedSongs)
-      .where(where),
+    db.select({ total: count() }).from(userPlayedSongs).where(where),
   ]);
 
   const plays: PlayWithSong[] = rows.map(({ play, song }) => ({

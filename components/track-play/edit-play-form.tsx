@@ -23,8 +23,7 @@ export function EditPlayForm({ play }: Props) {
         <p className="text-sm text-muted-foreground">
           {play.song.title} — {play.song.artist} ·{" "}
           {formatSongType(play.song.type, dict)} ·{" "}
-          {formatDifficulty(play.song.difficulty, dict)} · ★
-          {play.song.rating}
+          {formatDifficulty(play.song.difficulty, dict)} · ★{play.song.rating}
         </p>
       </div>
 

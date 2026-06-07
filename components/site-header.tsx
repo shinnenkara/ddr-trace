@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { LayoutBottomIcon, Logout02Icon } from "@hugeicons/core-free-icons"
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { LayoutBottomIcon, Logout02Icon } from "@hugeicons/core-free-icons";
 
-import { signOut, useSession } from "@/lib/auth-client"
-import { useDictionary } from "@/lib/i18n/dictionary-provider"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { signOut, useSession } from "@/lib/auth-client";
+import { useDictionary } from "@/lib/i18n/dictionary-provider";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,24 +17,24 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
 function initials(name?: string | null, email?: string | null) {
-  const source = name?.trim() || email?.trim() || "?"
-  return source.slice(0, 2).toUpperCase()
+  const source = name?.trim() || email?.trim() || "?";
+  return source.slice(0, 2).toUpperCase();
 }
 
 export function SiteHeader() {
-  const dict = useDictionary()
-  const router = useRouter()
-  const { data: session, isPending } = useSession()
-  const user = session?.user
+  const dict = useDictionary();
+  const router = useRouter();
+  const { data: session, isPending } = useSession();
+  const user = session?.user;
 
   async function handleSignOut() {
-    await signOut()
-    toast.success(dict.header.signedOut)
-    router.push("/login")
-    router.refresh()
+    await signOut();
+    toast.success(dict.header.signedOut);
+    router.push("/login");
+    router.refresh();
   }
 
   return (
@@ -109,5 +109,5 @@ export function SiteHeader() {
         </div>
       </div>
     </header>
-  )
+  );
 }

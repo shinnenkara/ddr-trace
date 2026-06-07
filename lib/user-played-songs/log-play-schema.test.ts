@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  arcadeScoreSchema,
-  logPlayManualSchema,
-} from "./log-play-schema";
+import { arcadeScoreSchema, logPlayManualSchema } from "./log-play-schema";
 import { getChartObjectCount, MAX_ARCADE_SCORE } from "./chart-math";
 import type { Song } from "@/lib/db/schema";
 
@@ -52,8 +49,6 @@ describe("logPlayManualSchema", () => {
   });
 
   it("rejects scores above max", () => {
-    expect(() =>
-      arcadeScoreSchema.parse(MAX_ARCADE_SCORE + 1),
-    ).toThrow();
+    expect(() => arcadeScoreSchema.parse(MAX_ARCADE_SCORE + 1)).toThrow();
   });
 });

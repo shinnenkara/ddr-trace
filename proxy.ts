@@ -48,10 +48,7 @@ export function proxy(request: NextRequest): NextResponse {
   if (!hasSession && !isPublicRoute) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
-    return applyLocaleCookie(
-      request,
-      NextResponse.redirect(loginUrl),
-    );
+    return applyLocaleCookie(request, NextResponse.redirect(loginUrl));
   }
 
   return applyLocaleCookie(request, NextResponse.next());

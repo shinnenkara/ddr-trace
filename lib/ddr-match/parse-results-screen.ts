@@ -39,7 +39,9 @@ export async function matchAndLogPlay(
 
   for (const play of resolved.plays) {
     if (!songIdSet.has(play.song_id)) {
-      throw new Error(`Matched song id ${play.song_id} was not found in database`);
+      throw new Error(
+        `Matched song id ${play.song_id} was not found in database`,
+      );
     }
   }
 

@@ -2,11 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  LaptopIcon,
-  Moon01Icon,
-  Sun01Icon,
-} from "@hugeicons/core-free-icons";
+import { LaptopIcon, Moon01Icon, Sun01Icon } from "@hugeicons/core-free-icons";
 import { useTheme } from "next-themes";
 import { useDictionary } from "@/lib/i18n/dictionary-provider";
 import { Button } from "@/components/ui/button";
@@ -49,10 +45,7 @@ export function ThemeSwitcher() {
           size="icon-sm"
           aria-label={dict.a11y.switchTheme}
         >
-          <HugeiconsIcon
-            icon={icon}
-            className="size-4 text-muted-foreground"
-          />
+          <HugeiconsIcon icon={icon} className="size-4 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-content" align="end">

@@ -4,10 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { Song } from "../../lib/db/schema";
 import type { SortColumn } from "../../lib/db/queries";
 import type { Dictionary } from "@/lib/i18n/dictionary-provider";
-import {
-  formatDifficulty,
-  formatSongType,
-} from "@/lib/i18n/song-labels";
+import { formatDifficulty, formatSongType } from "@/lib/i18n/song-labels";
 
 /** Extra per-column config we attach via TanStack's `meta` field. */
 export type SongColumnMeta = {
@@ -34,7 +31,9 @@ export function getSongColumns(dict: Dictionary): ColumnDef<Song>[] {
       header: dict.songs.columns.title,
       meta: { sortKey: "title" } satisfies SongColumnMeta,
       cell: ({ row }) => (
-        <span className="font-medium text-foreground">{row.original.title}</span>
+        <span className="font-medium text-foreground">
+          {row.original.title}
+        </span>
       ),
     },
     {
@@ -77,7 +76,10 @@ export function getSongColumns(dict: Dictionary): ColumnDef<Song>[] {
       } satisfies SongColumnMeta,
       cell: ({ row }) => (
         <span className="tabular-nums">
-          {formatBpm(row.original.display_bpm_min, row.original.display_bpm_max)}
+          {formatBpm(
+            row.original.display_bpm_min,
+            row.original.display_bpm_max,
+          )}
         </span>
       ),
     },

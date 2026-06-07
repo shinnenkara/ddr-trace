@@ -90,14 +90,13 @@ export function usePhotoLogUpload({
         onFilesSelected={handleFilesSelected}
       />
     ),
-    [PhotoLogState.INSTANT_MATCH]:
-      (capture && (
-        <InstantMatchState
-          capture={capture}
-          onRetake={handleRetake}
-          onMatch={onMatch}
-        />
-      )) || <></>,
+    [PhotoLogState.INSTANT_MATCH]: (capture && (
+      <InstantMatchState
+        capture={capture}
+        onRetake={handleRetake}
+        onMatch={onMatch}
+      />
+    )) || <></>,
     [PhotoLogState.MULTI_QUEUE]: (
       <MultiPhotoQueueState
         captures={multiCaptures}
