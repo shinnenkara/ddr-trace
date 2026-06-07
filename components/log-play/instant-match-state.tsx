@@ -14,22 +14,39 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useDictionary } from "@/lib/i18n/dictionary-provider";
+import type { ChartType, PlayerSide } from "@/lib/ddr-match/ai-results-schema";
+import type { PreviewPlayRow } from "@/lib/ddr-match/photo-match-outcome";
 import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 
 type Props = {
   capture: CapturedImage;
   onRetake: () => void;
   onMatch: (result: LogPlayResult) => void;
+  onPreview: (payload: {
+    rows: PreviewPlayRow[];
+    overallConfidence: number;
+  }) => void;
 };
 
-export function InstantMatchState({ capture, onRetake, onMatch }: Props) {
+export function InstantMatchState({
+  capture,
+  onRetake,
+  onMatch,
+  onPreview,
+}: Props) {
   const dict = useDictionary();
   const [hint, setHint] = useState("");
-  const { submit, error, pending } = useInstantLogPlay({ onMatch });
+  const [chartType, setChartType] = useState<ChartType>("single");
+  const [playerSide, setPlayerSide] = useState<PlayerSide>("auto");
+  const { submit, error, pending } = useInstantLogPlay({ onMatch, onPreview });
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    void submit(capture, hint.trim() || undefined);
+    void submit(capture, {
+      hint: hint.trim() || undefined,
+      chartType,
+      playerSide,
+    });
   };
 
   return (
@@ -69,7 +86,14 @@ export function InstantMatchState({ capture, onRetake, onMatch }: Props) {
             </Dialog>
           </div>
           <div className="w-full">
-            <DdrCaptureForm hint={hint} onHintChange={setHint} />
+            <DdrCaptureForm
+              chartType={chartType}
+              onChartTypeChange={setChartType}
+              playerSide={playerSide}
+              onPlayerSideChange={setPlayerSide}
+              hint={hint}
+              onHintChange={setHint}
+            />
           </div>
         </div>
       </div>

@@ -11,12 +11,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { DrawerFooter } from "@/components/ui/drawer";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { buildDdrCaptureFormData } from "@/components/log-play/build-ddr-capture-form-data";
 import type { MultiUploadItem } from "@/components/log-play/multi-upload-item";
 import { matchAndLogPlayAction } from "@/lib/user-played-songs/match-and-log-play-action";
 import type { ActionErrorKind } from "@/lib/api/action-data-state";
+import type { ChartType, PlayerSide } from "@/lib/ddr-match/ai-results-schema";
 import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 import { useDictionary } from "@/lib/i18n/dictionary-provider";
+import { cn } from "@/lib/utils";
 
 type QueueStatus = "queued" | "uploading" | "success" | "error";
 
@@ -45,6 +48,8 @@ export function MultiPhotoQueueState({
 }: Props) {
   const dict = useDictionary();
   const [items, setItems] = useState<QueueUploadItem[]>([]);
+  const [chartType, setChartType] = useState<ChartType>("single");
+  const [playerSide, setPlayerSide] = useState<PlayerSide>("auto");
   const [isRunning, setIsRunning] = useState(false);
   const itemsRef = useRef(items);
   const isBatchFinishedTriggered = useRef(false);
@@ -80,7 +85,11 @@ export function MultiPhotoQueueState({
       try {
         const response = await matchAndLogPlayAction(
           {},
-          buildDdrCaptureFormData(item.capture, { hint }),
+          buildDdrCaptureFormData(item.capture, {
+            hint,
+            chartType,
+            playerSide,
+          }),
         );
 
         if (response.data) {
@@ -133,7 +142,7 @@ export function MultiPhotoQueueState({
         );
       }
     },
-    [dict.logPlay.photo.multiQueue.uploadFailed],
+    [chartType, playerSide, dict.logPlay.photo.multiQueue.uploadFailed],
   );
 
   useEffect(() => {
@@ -235,6 +244,43 @@ export function MultiPhotoQueueState({
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pb-2">
+        <div className="mb-3 grid gap-2">
+          <Label htmlFor="queue-chart-type">
+            {dict.logPlay.photo.chartType}
+          </Label>
+          <select
+            id="queue-chart-type"
+            value={chartType}
+            onChange={(event) => setChartType(event.target.value as ChartType)}
+            disabled={isRunning}
+            className={cn(
+              "h-7 w-full rounded-md border border-input bg-input/20 px-2 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 md:text-xs/relaxed dark:bg-input/30",
+            )}
+          >
+            <option value="single">{dict.songs.type.single}</option>
+            <option value="double">{dict.songs.type.double}</option>
+          </select>
+        </div>
+        <div className="mb-3 grid gap-2">
+          <Label htmlFor="queue-player-side">
+            {dict.logPlay.photo.playerSide}
+          </Label>
+          <select
+            id="queue-player-side"
+            value={playerSide}
+            onChange={(event) =>
+              setPlayerSide(event.target.value as PlayerSide)
+            }
+            disabled={isRunning}
+            className={cn(
+              "h-7 w-full rounded-md border border-input bg-input/20 px-2 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 md:text-xs/relaxed dark:bg-input/30",
+            )}
+          >
+            <option value="auto">{dict.logPlay.photo.playerSideAuto}</option>
+            <option value="left">{dict.logPlay.photo.playerSideLeft}</option>
+            <option value="right">{dict.logPlay.photo.playerSideRight}</option>
+          </select>
+        </div>
         <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
           <span>
             {dict.logPlay.photo.multiQueue.progress
