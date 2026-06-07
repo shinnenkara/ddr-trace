@@ -1,3 +1,4 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
@@ -18,16 +19,17 @@ import {
  * singleton. Call `getAuth()` inside Route Handlers, Server Components, or
  * Server Actions to obtain a configured instance for the current request.
  *
- * `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` are read from the environment
- * (`.dev.vars` locally, Worker secrets/vars in production). `@opennextjs/cloudflare`
- * populates `process.env` from the Worker environment at runtime.
+ * `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` are read from
+ * `getCloudflareContext().env`, populated from `.dev.vars` during `next dev`
+ * and from Worker secrets/vars in production.
  */
 export async function getAuth() {
+  const { env } = await getCloudflareContext({ async: true });
   const db = await getDb();
 
   return betterAuth({
-    secret: process.env.BETTER_AUTH_SECRET,
-    baseURL: process.env.BETTER_AUTH_URL,
+    secret: env.BETTER_AUTH_SECRET,
+    baseURL: env.BETTER_AUTH_URL,
     database: drizzleAdapter(db, {
       provider: "sqlite",
       schema: { user, session, account, verification },

@@ -119,5 +119,48 @@
     "switchLanguage": "Switch language",
     "switchTheme": "Switch theme",
     "github": "GitHub"
+  },
+  "logPlay": {
+    "title": "Log a play",
+    "description": "Record your arcade scores manually or from a results screen photo.",
+    "tabs": {
+      "manual": "Manual",
+      "photo": "Photo"
+    },
+    "manual": {
+      "title": "Manual entry",
+      "description": "Search for a chart, enter your arcade score, and optional stage or speed.",
+      "searchLabel": "Chart",
+      "searchPlaceholder": "Search by title or artist…",
+      "searching": "Searching…",
+      "selected": "Selected",
+      "change": "Change",
+      "scoreLabel": "Arcade score",
+      "stageLabel": "Stage (optional)",
+      "speedLabel": "Speed (optional)",
+      "playedAtLabel": "Played at",
+      "submit": "Log play",
+      "submitting": "Saving…",
+      "success": "Play logged."
+    },
+    "photo": {
+      "title": "Photo match",
+      "description": "Capture or upload a DDR final results screen. AI will parse and log 1–3 plays instantly.",
+      "openCamera": "Capture results screen",
+      "takePhoto": "Take a photo",
+      "processing": "Processing image…",
+      "matchCapture": "Match & log",
+      "selectFile": "Upload photo",
+      "capture": "Capture",
+      "retake": "Retake",
+      "match": "Match & log",
+      "matching": "Matching…",
+      "loadingCamera": "Loading camera…",
+      "previewAlt": "Captured results screen",
+      "hint": "Hint (optional)",
+      "hintPlaceholder": "e.g. double charts only, stage 3 is blurry…",
+      "success": "Plays logged",
+      "successDescription": "Logged {count} play(s) from your results screen."
+    }
   }
 }

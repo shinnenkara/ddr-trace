@@ -9,3 +9,5 @@ BETTER_AUTH_URL=http://localhost:3000
 
 RESEND_API_KEY=
 RESEND_DOMAIN=onboarding@resend.dev
+
+GOOGLE_GENERATIVE_AI_API_KEY=

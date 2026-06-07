@@ -52,6 +52,11 @@ export function SiteHeader() {
         </Link>
 
         <div className="flex items-center gap-2">
+          {user ? (
+            <Button variant="ghost" size="lg" asChild>
+              <Link href="/log">{dict.logPlay.title}</Link>
+            </Button>
+          ) : null}
           {isPending ? (
             <div className="size-8 animate-pulse rounded-full bg-muted" />
           ) : user ? (

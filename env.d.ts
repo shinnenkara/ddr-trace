@@ -7,4 +7,5 @@ interface CloudflareEnv {
   BETTER_AUTH_URL: string;
   RESEND_API_KEY: string;
   RESEND_DOMAIN: string;
+  GOOGLE_GENERATIVE_AI_API_KEY: string;
 }

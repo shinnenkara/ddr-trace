@@ -42,15 +42,9 @@ export function proxy(request: NextRequest): NextResponse {
   const hasSession = Boolean(getSessionCookie(request));
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
-  // Signed-in users shouldn't see the auth screens.
-  if (hasSession && isPublicRoute) {
-    return applyLocaleCookie(
-      request,
-      NextResponse.redirect(new URL("/", request.url)),
-    );
-  }
-
   // Unauthenticated users get sent to the sign-in page.
+  // Auth pages stay reachable when a cookie exists — cookie presence alone does
+  // not mean a valid session (stale cookies after D1 resets, etc.).
   if (!hasSession && !isPublicRoute) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);

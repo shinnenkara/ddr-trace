@@ -91,3 +91,26 @@ export const verification = sqliteTable("verification", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
+
+export const userPlayedSongs = sqliteTable("user_played_songs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  songId: integer("song_id")
+    .notNull()
+    .references(() => songs.id, { onDelete: "cascade" }),
+  arcadeScore: integer("arcade_score").notNull(),
+  stage: integer("stage"),
+  batchId: text("batch_id"),
+  exScore: integer("ex_score"),
+  speedModifier: text("speed_modifier"),
+  playedAt: integer("played_at", { mode: "timestamp" }).notNull(),
+  source: text("source", { enum: ["manual", "photo"] }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export type UserPlayedSong = typeof userPlayedSongs.$inferSelect;
+export type InsertUserPlayedSong = typeof userPlayedSongs.$inferInsert;
