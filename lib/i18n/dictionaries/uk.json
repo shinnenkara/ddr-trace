@@ -1,0 +1,123 @@
+{
+  "common": {
+    "appName": "DDR Trace"
+  },
+  "metadata": {
+    "title": "DDR Trace — оглядач чартів Dance Dance Revolution",
+    "description": "Переглядайте та сортуйте повну бібліотеку чартів Dance Dance Revolution з рейтингами, BPM і даними про кроки."
+  },
+  "home": {
+    "badge": "DDR Trace",
+    "title": "Оглядач чартів Dance Dance Revolution",
+    "description": "Переглядайте повну бібліотеку чартів DDR з рейтингами, BPM і даними про кроки. Сортуйте будь-який стовпець і перегортайте каталог, щоб знайти наступний чарт. Незабаром з'являться інші інструменти аналізу та фільтрації."
+  },
+  "songs": {
+    "columns": {
+      "title": "Назва",
+      "artist": "Виконавець",
+      "type": "Тип",
+      "difficulty": "Складність",
+      "rating": "Рейтинг",
+      "bpm": "BPM",
+      "length": "Тривалість"
+    },
+    "searchPlaceholder": "Пошук за назвою або виконавцем…",
+    "empty": {
+      "none": "Пісень не знайдено.",
+      "noMatch": "Немає пісень за запитом «{query}»."
+    },
+    "pagination": {
+      "showing": "Показано {from}–{to} з {total} пісень",
+      "rowsPerPage": "Рядків на сторінку",
+      "pageOf": "Сторінка {page} з {pageCount}"
+    },
+    "type": {
+      "single": "Одинарний",
+      "double": "Подвійний"
+    },
+    "difficulty": {
+      "Basic": "Базовий",
+      "Beginner": "Початковий",
+      "Challenge": "Виклик",
+      "Difficult": "Складний",
+      "Expert": "Експерт",
+      "(?) Basic": "(?) Базовий",
+      "(?) Basic (unused)": "(?) Базовий (не використовується)",
+      "(?) Beginner": "(?) Початковий",
+      "(?) Beginner (unused)": "(?) Початковий (не використовується)",
+      "(?) Challenge": "(?) Виклик",
+      "(?) Challenge (unused)": "(?) Виклик (не використовується)",
+      "(?) Difficult": "(?) Складний",
+      "(?) Difficult (unused)": "(?) Складний (не використовується)",
+      "(?) Expert": "(?) Експерт",
+      "(?) Expert (unused)": "(?) Експерт (не використовується)",
+      "(?) VER.KOREA / Double - Trick": "(?) VER.KOREA / Double - Trick",
+      "(?) VER.KOREA / Single - Trick": "(?) VER.KOREA / Single - Trick"
+    }
+  },
+  "header": {
+    "signIn": "Увійти",
+    "signUp": "Зареєструватися",
+    "signOut": "Вийти",
+    "signedOut": "Ви вийшли з акаунту."
+  },
+  "auth": {
+    "login": {
+      "title": "З поверненням",
+      "description": "Введіть email і пароль, щоб увійти",
+      "email": "Email",
+      "password": "Пароль",
+      "submit": "Увійти",
+      "submitting": "Вхід…",
+      "noAccount": "Немає акаунту?",
+      "signUpLink": "Зареєструватися",
+      "verifyFirst": "Спочатку підтвердьте email. Ми надіслали нове посилання для підтвердження.",
+      "error": "Не вдалося увійти.",
+      "success": "Ви увійшли.",
+      "legal": "Продовжуючи, ви погоджуєтеся з {terms} та {privacy}.",
+      "terms": "Умовами використання",
+      "privacy": "Політикою конфіденційності"
+    },
+    "signup": {
+      "title": "Створіть акаунт",
+      "description": "Зареєструйтеся, щоб переглядати чарти DDR",
+      "name": "Ім'я",
+      "email": "Email",
+      "password": "Пароль",
+      "passwordHint": "Мінімум 8 символів.",
+      "submit": "Зареєструватися",
+      "submitting": "Створення акаунту…",
+      "hasAccount": "Вже маєте акаунт?",
+      "signInLink": "Увійти",
+      "error": "Не вдалося створити акаунт.",
+      "success": "Акаунт створено. Перевірте email для підтвердження.",
+      "legal": "Продовжуючи, ви погоджуєтеся з {terms} та {privacy}.",
+      "terms": "Умовами використання",
+      "privacy": "Політикою конфіденційності"
+    },
+    "verifyEmail": {
+      "title": "Перевірте email",
+      "description": "Ми надіслали посилання для підтвердження{email}. Перейдіть за ним, щоб активувати акаунт, потім увійдіть.",
+      "descriptionWithEmail": " на {email}",
+      "resend": "Надіслати лист повторно",
+      "resending": "Надсилання…",
+      "backToSignIn": "Повернутися до входу",
+      "noEmail": "Немає email для повторного надсилання.",
+      "resendError": "Не вдалося надіслати лист.",
+      "resendSuccess": "Лист для підтвердження надіслано."
+    }
+  },
+  "theme": {
+    "light": "Світла",
+    "dark": "Темна",
+    "system": "Системна"
+  },
+  "a11y": {
+    "clearSearch": "Очистити пошук",
+    "previousPage": "Попередня сторінка",
+    "nextPage": "Наступна сторінка",
+    "switchLanguage": "Змінити мову",
+    "switchTheme": "Змінити тему",
+    "github": "GitHub"
+  }
+}

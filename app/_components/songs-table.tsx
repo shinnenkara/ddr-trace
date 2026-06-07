@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -28,13 +28,14 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useDictionary } from "@/lib/i18n/dictionary-provider";
 import type { Song } from "../../lib/db/schema";
 import {
   PAGE_SIZE_OPTIONS,
   type SortColumn,
   type SortOrder,
 } from "../../lib/db/queries";
-import { columns, type SongColumnMeta } from "./columns";
+import { getSongColumns, type SongColumnMeta } from "./columns";
 
 type SongsTableProps = {
   data: Song[];
@@ -57,6 +58,8 @@ export function SongsTable({
   order,
   q,
 }: SongsTableProps) {
+  const dict = useDictionary();
+  const columns = useMemo(() => getSongColumns(dict), [dict]);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -118,6 +121,19 @@ export function SongsTable({
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
+  const emptyMessage = q
+    ? dict.songs.empty.noMatch.replace("{query}", q)
+    : dict.songs.empty.none;
+
+  const showingText = dict.songs.pagination.showing
+    .replace("{from}", String(from))
+    .replace("{to}", String(to))
+    .replace("{total}", String(total));
+
+  const pageOfText = dict.songs.pagination.pageOf
+    .replace("{page}", String(page))
+    .replace("{pageCount}", String(pageCount));
+
   return (
     <div className={cn("flex flex-col gap-4", isPending && "opacity-60")}>
       <div className="relative w-full sm:max-w-xs">
@@ -129,14 +145,14 @@ export function SongsTable({
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search title or artist…"
+          placeholder={dict.songs.searchPlaceholder}
           className="h-8 w-full rounded-md border bg-transparent pr-8 pl-8 text-xs text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 [&::-webkit-search-cancel-button]:appearance-none"
         />
         {search && (
           <button
             type="button"
             onClick={() => setSearch("")}
-            aria-label="Clear search"
+            aria-label={dict.a11y.clearSearch}
             className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <HugeiconsIcon icon={Cancel01Icon} className="size-3.5" />
@@ -227,7 +243,7 @@ export function SongsTable({
                   colSpan={columns.length}
                   className="h-24 text-center text-muted-foreground"
                 >
-                  {q ? `No songs match “${q}”.` : "No songs found."}
+                  {emptyMessage}
                 </TableCell>
               </TableRow>
             )}
@@ -236,15 +252,11 @@ export function SongsTable({
       </div>
 
       <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-        <p className="text-xs text-muted-foreground">
-          Showing <span className="tabular-nums">{from}</span>–
-          <span className="tabular-nums">{to}</span> of{" "}
-          <span className="tabular-nums">{total}</span> songs
-        </p>
+        <p className="text-xs text-muted-foreground">{showingText}</p>
 
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            Rows per page
+            {dict.songs.pagination.rowsPerPage}
             <select
               value={pageSize}
               onChange={(e) =>
@@ -262,14 +274,14 @@ export function SongsTable({
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground tabular-nums">
-              Page {page} of {pageCount}
+              {pageOfText}
             </span>
             <Button
               variant="outline"
               size="icon-sm"
               disabled={page <= 1 || isPending}
               onClick={() => pushParams({ page: String(page - 1) })}
-              aria-label="Previous page"
+              aria-label={dict.a11y.previousPage}
             >
               <HugeiconsIcon icon={ArrowLeft01Icon} />
             </Button>
@@ -278,7 +290,7 @@ export function SongsTable({
               size="icon-sm"
               disabled={page >= pageCount || isPending}
               onClick={() => pushParams({ page: String(page + 1) })}
-              aria-label="Next page"
+              aria-label={dict.a11y.nextPage}
             >
               <HugeiconsIcon icon={ArrowRight01Icon} />
             </Button>

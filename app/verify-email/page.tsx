@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 
 import { authClient } from "@/lib/auth-client"
+import { useDictionary } from "@/lib/i18n/dictionary-provider"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -16,13 +17,22 @@ import {
 } from "@/components/ui/card"
 
 function VerifyEmailContent() {
+  const dict = useDictionary()
+  const t = dict.auth.verifyEmail
   const searchParams = useSearchParams()
   const email = searchParams.get("email") ?? ""
   const [loading, setLoading] = useState(false)
 
+  const description = email
+    ? t.description.replace(
+        "{email}",
+        t.descriptionWithEmail.replace("{email}", email),
+      )
+    : t.description.replace("{email}", "")
+
   async function resend() {
     if (!email) {
-      toast.error("No email address to resend to.")
+      toast.error(t.noEmail)
       return
     }
     setLoading(true)
@@ -33,27 +43,24 @@ function VerifyEmailContent() {
     setLoading(false)
 
     if (error) {
-      toast.error(error.message || "Could not resend the email.")
+      toast.error(error.message || t.resendError)
       return
     }
-    toast.success("Verification email sent.")
+    toast.success(t.resendSuccess)
   }
 
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="text-center">
-        <CardTitle className="text-xl">Check your email</CardTitle>
-        <CardDescription>
-          We sent a verification link{email ? ` to ${email}` : ""}. Click it to
-          activate your account, then sign in.
-        </CardDescription>
+        <CardTitle className="text-xl">{t.title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <Button onClick={resend} disabled={loading} variant="outline">
-          {loading ? "Sending…" : "Resend verification email"}
+          {loading ? t.resending : t.resend}
         </Button>
         <Button asChild>
-          <Link href="/login">Back to sign in</Link>
+          <Link href="/login">{t.backToSignIn}</Link>
         </Button>
       </CardContent>
     </Card>

@@ -7,6 +7,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { LayoutBottomIcon, Logout02Icon } from "@hugeicons/core-free-icons"
 
 import { signOut, useSession } from "@/lib/auth-client"
+import { useDictionary } from "@/lib/i18n/dictionary-provider"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -24,13 +25,14 @@ function initials(name?: string | null, email?: string | null) {
 }
 
 export function SiteHeader() {
+  const dict = useDictionary()
   const router = useRouter()
   const { data: session, isPending } = useSession()
   const user = session?.user
 
   async function handleSignOut() {
     await signOut()
-    toast.success("Signed out.")
+    toast.success(dict.header.signedOut)
     router.push("/login")
     router.refresh()
   }
@@ -46,7 +48,7 @@ export function SiteHeader() {
               className="size-4"
             />
           </div>
-          DDR Trace
+          {dict.common.appName}
         </Link>
 
         <div className="flex items-center gap-2">
@@ -80,17 +82,17 @@ export function SiteHeader() {
                     strokeWidth={2}
                     className="size-4"
                   />
-                  Sign out
+                  {dict.header.signOut}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <>
               <Button variant="ghost" size="lg" asChild>
-                <Link href="/login">Sign in</Link>
+                <Link href="/login">{dict.header.signIn}</Link>
               </Button>
               <Button size="lg" asChild>
-                <Link href="/signup">Sign up</Link>
+                <Link href="/signup">{dict.header.signUp}</Link>
               </Button>
             </>
           )}

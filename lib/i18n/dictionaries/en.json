@@ -1,0 +1,123 @@
+{
+  "common": {
+    "appName": "DDR Trace"
+  },
+  "metadata": {
+    "title": "DDR Trace — Dance Dance Revolution chart explorer",
+    "description": "Browse and sort the full library of Dance Dance Revolution charts with ratings, BPMs, and step data."
+  },
+  "home": {
+    "badge": "DDR Trace",
+    "title": "Dance Dance Revolution chart explorer",
+    "description": "Browse the full library of DDR charts with their ratings, BPMs, and step data. Sort any column and page through the catalog to find your next chart. More analysis and filtering tools are on the way."
+  },
+  "songs": {
+    "columns": {
+      "title": "Title",
+      "artist": "Artist",
+      "type": "Type",
+      "difficulty": "Difficulty",
+      "rating": "Rating",
+      "bpm": "BPM",
+      "length": "Length"
+    },
+    "searchPlaceholder": "Search title or artist…",
+    "empty": {
+      "none": "No songs found.",
+      "noMatch": "No songs match \"{query}\"."
+    },
+    "pagination": {
+      "showing": "Showing {from}–{to} of {total} songs",
+      "rowsPerPage": "Rows per page",
+      "pageOf": "Page {page} of {pageCount}"
+    },
+    "type": {
+      "single": "Single",
+      "double": "Double"
+    },
+    "difficulty": {
+      "Basic": "Basic",
+      "Beginner": "Beginner",
+      "Challenge": "Challenge",
+      "Difficult": "Difficult",
+      "Expert": "Expert",
+      "(?) Basic": "(?) Basic",
+      "(?) Basic (unused)": "(?) Basic (unused)",
+      "(?) Beginner": "(?) Beginner",
+      "(?) Beginner (unused)": "(?) Beginner (unused)",
+      "(?) Challenge": "(?) Challenge",
+      "(?) Challenge (unused)": "(?) Challenge (unused)",
+      "(?) Difficult": "(?) Difficult",
+      "(?) Difficult (unused)": "(?) Difficult (unused)",
+      "(?) Expert": "(?) Expert",
+      "(?) Expert (unused)": "(?) Expert (unused)",
+      "(?) VER.KOREA / Double - Trick": "(?) VER.KOREA / Double - Trick",
+      "(?) VER.KOREA / Single - Trick": "(?) VER.KOREA / Single - Trick"
+    }
+  },
+  "header": {
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "signOut": "Sign out",
+    "signedOut": "Signed out."
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "description": "Enter your email and password to sign in",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "noAccount": "Don't have an account?",
+      "signUpLink": "Sign up",
+      "verifyFirst": "Please verify your email first. We've sent you a new verification link.",
+      "error": "Unable to sign in.",
+      "success": "Signed in.",
+      "legal": "By continuing, you agree to our {terms} and {privacy}.",
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy"
+    },
+    "signup": {
+      "title": "Create your account",
+      "description": "Sign up to start exploring DDR charts",
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "passwordHint": "Must be at least 8 characters.",
+      "submit": "Sign up",
+      "submitting": "Creating account…",
+      "hasAccount": "Already have an account?",
+      "signInLink": "Sign in",
+      "error": "Unable to create account.",
+      "success": "Account created. Check your email to verify.",
+      "legal": "By continuing, you agree to our {terms} and {privacy}.",
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy"
+    },
+    "verifyEmail": {
+      "title": "Check your email",
+      "description": "We sent a verification link{email}. Click it to activate your account, then sign in.",
+      "descriptionWithEmail": " to {email}",
+      "resend": "Resend verification email",
+      "resending": "Sending…",
+      "backToSignIn": "Back to sign in",
+      "noEmail": "No email address to resend to.",
+      "resendError": "Could not resend the email.",
+      "resendSuccess": "Verification email sent."
+    }
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "a11y": {
+    "clearSearch": "Clear search",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "switchLanguage": "Switch language",
+    "switchTheme": "Switch theme",
+    "github": "GitHub"
+  }
+}
