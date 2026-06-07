@@ -59,7 +59,8 @@
     "signIn": "Sign in",
     "signUp": "Sign up",
     "signOut": "Sign out",
-    "signedOut": "Signed out."
+    "signedOut": "Signed out.",
+    "track": "Track"
   },
   "auth": {
     "login": {
@@ -141,7 +142,8 @@
       "playedAtLabel": "Played at",
       "submit": "Log play",
       "submitting": "Saving…",
-      "success": "Play logged."
+      "success": "Play logged.",
+      "viewPlays": "View plays"
     },
     "photo": {
       "title": "Photo match",
@@ -160,7 +162,76 @@
       "hint": "Hint (optional)",
       "hintPlaceholder": "e.g. double charts only, stage 3 is blurry…",
       "success": "Plays logged",
-      "successDescription": "Logged {count} play(s) from your results screen."
+      "successDescription": "Logged {count} play(s) from your results screen.",
+      "viewPlays": "View plays",
+      "selectFiles": "Upload photos",
+      "multiQueue": {
+        "title": "Processing photos",
+        "queued": "Queued",
+        "uploading": "Matching…",
+        "success": "Logged",
+        "error": "Failed",
+        "retry": "Retry",
+        "done": "Done",
+        "progress": "{done} of {total} complete",
+        "batchSummary": "Logged {success} of {total} photo(s).",
+        "uploadFailed": "Match failed"
+      }
     }
+  },
+  "track": {
+    "title": "Your plays",
+    "description": "Browse your logged arcade scores and track progress over time.",
+    "logPlay": "Log a play",
+    "empty": {
+      "title": "No plays yet",
+      "description": "Log your first arcade score manually or from a results screen photo.",
+      "cta": "Log a play"
+    },
+    "columns": {
+      "playedAt": "Played",
+      "title": "Title",
+      "artist": "Artist",
+      "difficulty": "Difficulty",
+      "rating": "Rating",
+      "score": "Score",
+      "stage": "Stage",
+      "source": "Source"
+    },
+    "source": {
+      "manual": "Manual",
+      "photo": "Photo"
+    },
+    "actions": {
+      "edit": "Edit",
+      "view": "View progress"
+    },
+    "detail": {
+      "back": "Back to plays",
+      "personalBest": "Personal best",
+      "attempts": "Attempts",
+      "latestScore": "Latest score",
+      "scoreChart": "Score progress",
+      "attemptHistory": "Attempt history",
+      "edit": "Edit play",
+      "highlighted": "This play"
+    },
+    "edit": {
+      "title": "Edit play",
+      "chart": "Chart",
+      "scoreLabel": "Arcade score",
+      "exScoreLabel": "EX score (optional)",
+      "stageLabel": "Stage (optional)",
+      "speedLabel": "Speed (optional)",
+      "playedAtLabel": "Played at",
+      "submit": "Save changes",
+      "submitting": "Saving…",
+      "delete": "Delete play",
+      "deleteConfirm": "Delete this play? This cannot be undone.",
+      "deleting": "Deleting…",
+      "success": "Play updated.",
+      "deleteSuccess": "Play deleted."
+    },
+    "viewPlays": "View plays"
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Drawer,
@@ -18,6 +19,7 @@ type Props = {
 
 export function PhotoUploadDrawer({ onClose }: Props) {
   const dict = useDictionary();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
   const handleModal = (open: boolean) => {
@@ -34,11 +36,37 @@ export function PhotoUploadDrawer({ onClose }: Props) {
         "{count}",
         String(count),
       ),
+      action: {
+        label: dict.logPlay.photo.viewPlays,
+        onClick: () => router.push("/track"),
+      },
     });
     onClose();
   };
 
-  const { title, content } = usePhotoLogUpload({ onMatch: handleMatch });
+  const handleBatchFinished = (result: {
+    total: number;
+    success: number;
+    failed: number;
+  }) => {
+    toast.success(
+      dict.logPlay.photo.multiQueue.batchSummary
+        .replace("{success}", String(result.success))
+        .replace("{total}", String(result.total)),
+      {
+        action: {
+          label: dict.logPlay.photo.viewPlays,
+          onClick: () => {},
+        },
+      },
+    );
+  };
+
+  const { title, content } = usePhotoLogUpload({
+    onMatch: handleMatch,
+    onBatchFinished: handleBatchFinished,
+    onQueueDone: onClose,
+  });
 
   useEffect(() => {
     setIsOpen(true);

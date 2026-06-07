@@ -7,10 +7,10 @@ import { useDictionary } from "@/lib/i18n/dictionary-provider";
 
 type Props = {
   onCapture: (captureSrc: string) => void;
-  onFileSelected: (file: File) => void;
+  onFilesSelected: (files: File[]) => void;
 };
 
-export function CaptureState({ onCapture, onFileSelected }: Props) {
+export function CaptureState({ onCapture, onFilesSelected }: Props) {
   const dict = useDictionary();
   const { webcamRef, capture } = useWebcamCapture();
   const [isLoading, setIsLoading] = useState(true);
@@ -21,7 +21,7 @@ export function CaptureState({ onCapture, onFileSelected }: Props) {
       return;
     }
 
-    onFileSelected(files[0]);
+    onFilesSelected(files);
     e.target.value = "";
   };
 
@@ -41,11 +41,12 @@ export function CaptureState({ onCapture, onFileSelected }: Props) {
       <DrawerFooter className="grid grid-cols-2 gap-4 pb-0">
         <Button variant="outline" asChild>
           <label className="cursor-pointer">
-            {dict.logPlay.photo.selectFile}
+            {dict.logPlay.photo.selectFiles}
             <input
               type="file"
               onChange={handleFileChange}
               accept="image/*"
+              multiple
               className="hidden"
             />
           </label>

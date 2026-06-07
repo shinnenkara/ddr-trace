@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import { formatDifficulty, formatSongType } from "@/lib/i18n/song-labels";
 
 export function ManualPlayForm() {
   const dict = useDictionary();
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [songs, setSongs] = useState<Song[]>([]);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -24,10 +26,15 @@ export function ManualPlayForm() {
       return;
     }
 
-    toast.success(dict.logPlay.manual.success);
+    toast.success(dict.logPlay.manual.success, {
+      action: {
+        label: dict.logPlay.manual.viewPlays,
+        onClick: () => router.push("/track"),
+      },
+    });
     setSelectedSong(null);
     setQuery("");
-  }, [dict.logPlay.manual.success, state.data]);
+  }, [dict.logPlay.manual.success, router, state.data]);
 
   useEffect(() => {
     if (query.trim().length < 2) {

@@ -59,7 +59,8 @@
     "signIn": "Увійти",
     "signUp": "Зареєструватися",
     "signOut": "Вийти",
-    "signedOut": "Ви вийшли з акаунту."
+    "signedOut": "Ви вийшли з акаунту.",
+    "track": "Історія"
   },
   "auth": {
     "login": {
@@ -141,7 +142,8 @@
       "playedAtLabel": "Час гри",
       "submit": "Записати",
       "submitting": "Збереження…",
-      "success": "Результат записано."
+      "success": "Результат записано.",
+      "viewPlays": "Переглянути історію"
     },
     "photo": {
       "title": "Розпізнавання фото",
@@ -160,7 +162,76 @@
       "hint": "Підказка (опційно)",
       "hintPlaceholder": "напр. тільки double, етап 3 розмитий…",
       "success": "Результати записано",
-      "successDescription": "Записано {count} результат(ів) з вашого екрана."
+      "successDescription": "Записано {count} результат(ів) з вашого екрана.",
+      "viewPlays": "Переглянути історію",
+      "selectFiles": "Завантажити фото",
+      "multiQueue": {
+        "title": "Обробка фото",
+        "queued": "В черзі",
+        "uploading": "Розпізнавання…",
+        "success": "Записано",
+        "error": "Помилка",
+        "retry": "Повторити",
+        "done": "Готово",
+        "progress": "{done} з {total} завершено",
+        "batchSummary": "Записано {success} з {total} фото.",
+        "uploadFailed": "Не вдалося розпізнати"
+      }
     }
+  },
+  "track": {
+    "title": "Ваші результати",
+    "description": "Переглядайте arcade-рахунки та прогрес у часі.",
+    "logPlay": "Записати результат",
+    "empty": {
+      "title": "Ще немає результатів",
+      "description": "Запишіть перший arcade-рахунок вручну або з фото екрана результатів.",
+      "cta": "Записати результат"
+    },
+    "columns": {
+      "playedAt": "Час гри",
+      "title": "Назва",
+      "artist": "Виконавець",
+      "difficulty": "Складність",
+      "rating": "Рейтинг",
+      "score": "Рахунок",
+      "stage": "Етап",
+      "source": "Джерело"
+    },
+    "source": {
+      "manual": "Вручну",
+      "photo": "Фото"
+    },
+    "actions": {
+      "edit": "Редагувати",
+      "view": "Прогрес"
+    },
+    "detail": {
+      "back": "Назад до історії",
+      "personalBest": "Особистий рекорд",
+      "attempts": "Спроби",
+      "latestScore": "Останній рахунок",
+      "scoreChart": "Прогрес рахунку",
+      "attemptHistory": "Історія спроб",
+      "edit": "Редагувати",
+      "highlighted": "Цей результат"
+    },
+    "edit": {
+      "title": "Редагувати результат",
+      "chart": "Чарт",
+      "scoreLabel": "Arcade-рахунок",
+      "exScoreLabel": "EX-рахунок (опційно)",
+      "stageLabel": "Етап (опційно)",
+      "speedLabel": "Швидкість (опційно)",
+      "playedAtLabel": "Час гри",
+      "submit": "Зберегти",
+      "submitting": "Збереження…",
+      "delete": "Видалити",
+      "deleteConfirm": "Видалити цей результат? Цю дію не можна скасувати.",
+      "deleting": "Видалення…",
+      "success": "Результат оновлено.",
+      "deleteSuccess": "Результат видалено."
+    },
+    "viewPlays": "Переглянути історію"
   }
 }

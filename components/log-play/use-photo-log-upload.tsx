@@ -7,6 +7,11 @@ import {
 import { PhotoLogState } from "@/components/log-play/photo-log-state";
 import { CaptureState } from "@/components/capture/capture-state";
 import { InstantMatchState } from "@/components/log-play/instant-match-state";
+import { MultiPhotoQueueState } from "@/components/log-play/multi-photo-queue-state";
+import {
+  createMultiUploadItem,
+  type MultiUploadItem,
+} from "@/components/log-play/multi-upload-item";
 import { useDictionary } from "@/lib/i18n/dictionary-provider";
 import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 
@@ -17,12 +22,23 @@ export type PhotoLogUploadProps = {
 
 type Props = {
   onMatch: (result: LogPlayResult) => void;
+  onBatchFinished?: (result: {
+    total: number;
+    success: number;
+    failed: number;
+  }) => void;
+  onQueueDone: () => void;
 };
 
-export function usePhotoLogUpload({ onMatch }: Props): PhotoLogUploadProps {
+export function usePhotoLogUpload({
+  onMatch,
+  onBatchFinished,
+  onQueueDone,
+}: Props): PhotoLogUploadProps {
   const dict = useDictionary();
   const [state, setState] = useState<PhotoLogState>(PhotoLogState.CAPTURE);
   const [capture, setCapture] = useState<CapturedImage>();
+  const [multiCaptures, setMultiCaptures] = useState<MultiUploadItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const onCapture = (nextCapture: CapturedImage) => {
@@ -46,11 +62,22 @@ export function usePhotoLogUpload({ onMatch }: Props): PhotoLogUploadProps {
     }
   };
 
-  const handleFileSelected = async (file: File) => {
+  const handleFilesSelected = async (files: File[]) => {
+    if (files.length === 0) {
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      const processed = await fileToCapturedImage(file);
-      onCapture(processed);
+      if (files.length === 1) {
+        const processed = await fileToCapturedImage(files[0]);
+        onCapture(processed);
+        return;
+      }
+
+      const processed = await Promise.all(files.map(fileToCapturedImage));
+      setMultiCaptures(processed.map(createMultiUploadItem));
+      setState(PhotoLogState.MULTI_QUEUE);
     } finally {
       setIsProcessing(false);
     }
@@ -60,7 +87,7 @@ export function usePhotoLogUpload({ onMatch }: Props): PhotoLogUploadProps {
     [PhotoLogState.CAPTURE]: (
       <CaptureState
         onCapture={handleWebcamCapture}
-        onFileSelected={handleFileSelected}
+        onFilesSelected={handleFilesSelected}
       />
     ),
     [PhotoLogState.INSTANT_MATCH]:
@@ -71,6 +98,13 @@ export function usePhotoLogUpload({ onMatch }: Props): PhotoLogUploadProps {
           onMatch={onMatch}
         />
       )) || <></>,
+    [PhotoLogState.MULTI_QUEUE]: (
+      <MultiPhotoQueueState
+        captures={multiCaptures}
+        onDone={onQueueDone}
+        onBatchFinished={onBatchFinished}
+      />
+    ),
   };
 
   const titles: Record<PhotoLogState, string> = {
@@ -78,6 +112,7 @@ export function usePhotoLogUpload({ onMatch }: Props): PhotoLogUploadProps {
       ? dict.logPlay.photo.processing
       : dict.logPlay.photo.takePhoto,
     [PhotoLogState.INSTANT_MATCH]: dict.logPlay.photo.matchCapture,
+    [PhotoLogState.MULTI_QUEUE]: dict.logPlay.photo.multiQueue.title,
   };
 
   return {

@@ -32,6 +32,10 @@ export async function logPlayManualAction(
     response.data = { plays, batchId: null };
   });
 
-  revalidatePath("/log");
+  if (response.data) {
+    revalidatePath("/log");
+    revalidatePath("/track");
+  }
+
   return response;
 }

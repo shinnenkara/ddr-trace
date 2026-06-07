@@ -20,6 +20,10 @@ export async function matchAndLogPlayAction(
     response.data = await matchAndLogPlay(data);
   });
 
-  revalidatePath("/log");
+  if (response.data) {
+    revalidatePath("/log");
+    revalidatePath("/track");
+  }
+
   return response;
 }
