@@ -9,22 +9,7 @@ import {
   VISION_ERROR_NOT_RESULTS,
   VISION_ERROR_TOO_BLURRY,
 } from "./vision-errors";
-
-const dualStageBase = {
-  stage: 1,
-  title_candidates: [
-    {
-      title: "Test Song",
-      confidence: 0.95,
-      short_reason: "clear",
-    },
-  ],
-  score_layout: "dual" as const,
-  left_score: 100000,
-  right_score: 200000,
-  score_confidence: 0.9,
-  difficulty_color: "blue",
-};
+import { makeStageVision } from "./test-helpers";
 
 describe("normalizeDdrVisionParse", () => {
   it("returns success for clear partial vision with multiple title candidates", () => {
@@ -47,9 +32,16 @@ describe("normalizeDdrVisionParse", () => {
               short_reason: "possible subtitle visible",
             },
           ],
-          arcade_score: 123456,
-          score_confidence: 0.9,
-          difficulty_color: "red",
+          p2: {
+            score: 123456,
+            difficulty_border: [
+              {
+                color: "red",
+                confidence: 0.9,
+                short_reason: "strip left of grade",
+              },
+            ],
+          },
         },
       ],
     });
@@ -59,6 +51,7 @@ describe("normalizeDdrVisionParse", () => {
       expect(result.stages).toHaveLength(1);
       expect(result.stages[0].title_candidates).toHaveLength(2);
       expect(result.stages[0].title_candidates[0].title).toBe("PARANOiA");
+      expect(result.stages[0].p2?.score).toBe(123456);
     }
   });
 
@@ -93,10 +86,16 @@ describe("normalizeDdrVisionParse", () => {
               short_reason: "glare but legible",
             },
           ],
-          right_score: 837760,
-          arcade_score: 837760,
-          score_confidence: 0.9,
-          difficulty_color: "yellow",
+          p2: {
+            score: 837760,
+            difficulty_border: [
+              {
+                color: "yellow",
+                confidence: 0.8,
+                short_reason: "strip beside grade",
+              },
+            ],
+          },
         },
       ],
     });
@@ -119,16 +118,23 @@ describe("normalizeDdrVisionParse", () => {
               short_reason: "glare",
             },
           ],
-          right_score: 837760,
-          score_confidence: 0.9,
-          difficulty_color: "yellow",
+          p2: {
+            score: 837760,
+            difficulty_border: [
+              {
+                color: "yellow",
+                confidence: 0.7,
+                short_reason: "strip beside grade",
+              },
+            ],
+          },
         },
       ],
     });
 
     expect(result.status).toBe("success");
     if (result.status === "success") {
-      expect(result.stages[0].arcade_score).toBe(837760);
+      expect(result.stages[0].p2?.score).toBe(837760);
     }
   });
 
@@ -147,9 +153,16 @@ describe("normalizeDdrVisionParse", () => {
               short_reason: "clear",
             },
           ],
-          arcade_score: 1000,
-          score_confidence: 1,
-          difficulty_color: "blue",
+          p1: {
+            score: 1000,
+            difficulty_border: [
+              {
+                color: "blue",
+                confidence: 0.9,
+                short_reason: "strip beside grade",
+              },
+            ],
+          },
         },
       ],
     });
@@ -172,9 +185,16 @@ describe("normalizeDdrVisionParse", () => {
               short_reason: "visible in crop",
             },
           ],
-          arcade_score: 50000,
-          score_confidence: 0.8,
-          difficulty_color: "red",
+          p1: {
+            score: 50000,
+            difficulty_border: [
+              {
+                color: "red",
+                confidence: 0.8,
+                short_reason: "strip beside grade",
+              },
+            ],
+          },
         },
       ],
     });
@@ -191,20 +211,27 @@ describe("normalizeDdrVisionParse", () => {
       stages: [
         {
           title_candidates: [],
-          arcade_score: 1000,
-          score_confidence: 0.9,
-          difficulty_color: "blue",
+          p1: {
+            score: 1000,
+            difficulty_border: [
+              {
+                color: "blue",
+                confidence: 0.9,
+                short_reason: "strip beside grade",
+              },
+            ],
+          },
         },
       ],
     });
 
     expect(result.status).toBe("success");
     if (result.status === "success") {
-      expect(result.stages[0].arcade_score).toBe(1000);
+      expect(result.stages[0].p1?.score).toBe(1000);
     }
   });
 
-  it("clamps confidence values and dedupes title candidates", () => {
+  it("clamps confidence values and dedupes title and border candidates", () => {
     const result = normalizeDdrVisionParse({
       status: "success",
       looks_like_ddr_results: true,
@@ -224,9 +251,26 @@ describe("normalizeDdrVisionParse", () => {
               short_reason: "duplicate",
             },
           ],
-          arcade_score: 1000,
-          score_confidence: -1,
-          difficulty_color: "not-a-color",
+          p1: {
+            score: 1000,
+            difficulty_border: [
+              {
+                color: "red",
+                confidence: 2,
+                short_reason: "strip beside grade",
+              },
+              {
+                color: "red",
+                confidence: 0.5,
+                short_reason: "duplicate color",
+              },
+              {
+                color: "not-a-color",
+                confidence: 0.9,
+                short_reason: "invalid",
+              },
+            ],
+          },
         },
       ],
     });
@@ -235,92 +279,103 @@ describe("normalizeDdrVisionParse", () => {
     if (result.status === "success") {
       expect(result.screen_confidence).toBe(1);
       expect(result.stages[0].title_candidates).toHaveLength(1);
-      expect(result.stages[0].score_confidence).toBe(0);
-      expect(result.stages[0].difficulty_color).toBeNull();
+      expect(result.stages[0].p1?.difficulty_border).toHaveLength(1);
+      expect(result.stages[0].p1?.difficulty_border[0].confidence).toBe(1);
     }
   });
 
-  it("normalizes dual scores and applies user left side override", () => {
-    const result = normalizeDdrVisionParse(
-      {
-        status: "success",
-        looks_like_ddr_results: true,
-        screen_confidence: 0.9,
-        readability: "clear",
-        stages: [
-          {
-            ...dualStageBase,
-            arcade_score: 200000,
-            score_side: "right",
-            score_side_confidence: 0.7,
-            score_selection_reason: "right column closer",
+  it("normalizes nested p1/p2 stats without derived fields", () => {
+    const result = normalizeDdrVisionParse({
+      status: "success",
+      looks_like_ddr_results: true,
+      screen_confidence: 0.9,
+      readability: "clear",
+      stages: [
+        {
+          title_candidates: [
+            { title: "Song", confidence: 0.9, short_reason: "clear" },
+          ],
+          p1: {
+            score: 802310,
+            difficulty_border: [
+              {
+                color: "red",
+                confidence: 0.92,
+                short_reason: "strip right of B+",
+              },
+            ],
           },
-        ],
-      },
-      "left",
-    );
+          p2: {
+            score: 819510,
+            difficulty_border: [
+              {
+                color: "blue",
+                confidence: 0.85,
+                short_reason: "strip left of A",
+              },
+            ],
+          },
+        },
+      ],
+    });
 
     expect(result.status).toBe("success");
     if (result.status === "success") {
-      expect(result.stages[0].score_layout).toBe("dual");
-      expect(result.stages[0].left_score).toBe(100000);
-      expect(result.stages[0].right_score).toBe(200000);
-      expect(result.stages[0].arcade_score).toBe(100000);
-      expect(result.stages[0].score_side).toBe("left");
-      expect(result.stages[0].score_side_confidence).toBe(1);
+      const row = result.stages[0];
+      expect(row.p1?.score).toBe(802310);
+      expect(row.p2?.score).toBe(819510);
+      expect(row.p1?.difficulty_border[0].color).toBe("red");
+      expect("selected_player" in row).toBe(false);
+      expect("arcade_score" in row).toBe(false);
     }
   });
 
-  it("keeps auto dual score side with low confidence for preview routing", () => {
-    const result = normalizeDdrVisionParse(
-      {
-        status: "success",
-        looks_like_ddr_results: true,
-        screen_confidence: 0.9,
-        readability: "clear",
-        stages: [
-          {
-            ...dualStageBase,
-            arcade_score: 100000,
-            score_side: "left",
-            score_side_confidence: 0.4,
-            score_selection_reason: "uncertain",
-          },
-        ],
-      },
-      "auto",
-    );
+  it("parses played_player screen context", () => {
+    const result = normalizeDdrVisionParse({
+      status: "success",
+      looks_like_ddr_results: true,
+      screen_confidence: 0.9,
+      readability: "clear",
+      played_player: "p1",
+      played_player_confidence: 0.4,
+      played_player_reason: "uncertain",
+      stages: [
+        {
+          title_candidates: [
+            { title: "Song", confidence: 0.9, short_reason: "clear" },
+          ],
+          p1: { score: 100000 },
+          p2: { score: 200000 },
+        },
+      ],
+    });
 
     expect(result.status).toBe("success");
     if (result.status === "success") {
-      expect(result.stages[0].score_side_confidence).toBe(0.4);
+      expect(result.played_player).toBe("p1");
+      expect(result.played_player_confidence).toBe(0.4);
     }
   });
 
-  it("keeps user-selected side with unreadable score as extractable row", () => {
-    const result = normalizeDdrVisionParse(
-      {
-        status: "success",
-        looks_like_ddr_results: true,
-        screen_confidence: 0.9,
-        readability: "clear",
-        stages: [
-          {
-            ...dualStageBase,
-            left_score: null,
-            arcade_score: 200000,
-            score_side: "right",
-            score_side_confidence: 1,
-            score_selection_reason: "user specified right",
-          },
-        ],
-      },
-      "left",
-    );
+  it("keeps user-selected side row extractable without selected player score", () => {
+    const result = normalizeDdrVisionParse({
+      status: "success",
+      looks_like_ddr_results: true,
+      screen_confidence: 0.9,
+      readability: "clear",
+      stages: [
+        {
+          title_candidates: [
+            { title: "Song", confidence: 0.9, short_reason: "clear" },
+          ],
+          p1: { score: null },
+          p2: { score: 200000 },
+        },
+      ],
+    });
 
     expect(result.status).toBe("success");
     if (result.status === "success") {
-      expect(result.stages[0].arcade_score).toBeNull();
       expect(stageHasExtractableSignal(result.stages[0])).toBe(true);
     }
   });
@@ -330,9 +385,7 @@ describe("normalizeDdrVisionParse", () => {
       title_candidates: [
         { title: "Song A", confidence: 0.95, short_reason: "clear" },
       ],
-      arcade_score: 100000,
-      score_confidence: 1,
-      difficulty_color: "blue",
+      p1: { score: 100000 },
     };
 
     const result = normalizeDdrVisionParse({
@@ -340,7 +393,11 @@ describe("normalizeDdrVisionParse", () => {
       looks_like_ddr_results: true,
       screen_confidence: 0.9,
       readability: "clear",
-      stages: [row, { ...row, arcade_score: 200000 }, { ...row, arcade_score: 300000 }],
+      stages: [
+        row,
+        { ...row, p1: { score: 200000 } },
+        { ...row, p1: { score: 300000 } },
+      ],
     });
 
     expect(result.status).toBe("success");
@@ -361,23 +418,7 @@ describe("normalizeDdrVisionParse", () => {
           },
         ],
       },
-      [
-        {
-          stage: 2,
-          title_candidates: [
-            { title: "Test Song", confidence: 0.9, short_reason: "clear" },
-          ],
-          score_layout: "single",
-          left_score: null,
-          right_score: null,
-          arcade_score: 100000,
-          score_confidence: 1,
-          score_side: null,
-          score_side_confidence: 1,
-          score_selection_reason: "single",
-          difficulty_color: "red",
-        },
-      ],
+      [makeStageVision({ stage: 2, title_candidates: [] })],
     );
 
     expect(result.plays[0].stage).toBe(2);
@@ -390,10 +431,19 @@ describe("filterUsableStages", () => {
       status: "success",
       stages: [
         {
-          title_candidates: [{ title: "あ", confidence: 0.2, short_reason: "partial" }],
-          right_score: 500000,
-          score_confidence: 0.9,
-          difficulty_color: "red",
+          title_candidates: [
+            { title: "あ", confidence: 0.2, short_reason: "partial" },
+          ],
+          p2: {
+            score: 500000,
+            difficulty_border: [
+              {
+                color: "red",
+                confidence: 0.9,
+                short_reason: "strip beside grade",
+              },
+            ],
+          },
         },
       ],
     });
@@ -410,7 +460,6 @@ describe("filterUsableStages", () => {
       stages: [
         {
           title_candidates: [],
-          difficulty_color: undefined,
         },
       ],
     });

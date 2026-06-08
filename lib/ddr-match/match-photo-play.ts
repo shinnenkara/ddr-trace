@@ -1,4 +1,10 @@
-import type { DdrCapture, DdrResolvedPlays, StageVision } from "./ai-results-schema";
+import type {
+  DdrCapture,
+  DerivedStageContext,
+  DdrResolvedPlays,
+  DdrVisionParseResult,
+  StageVision,
+} from "./ai-results-schema";
 import type { PhotoMatchOutcome, PreviewPlayRow } from "./photo-match-outcome";
 import {
   parseResultsScreenVision,
@@ -6,6 +12,8 @@ import {
   throwAiError,
 } from "./get-ai-ddr-results";
 import { searchCandidatesForVision } from "./search-candidates-for-vision";
+import { filterCandidatesByDifficulty } from "./filter-candidates-by-difficulty";
+import { deriveStageContexts } from "./derive-stage-context";
 import {
   filterUsableStages,
   stageHasExtractableSignal,
@@ -14,6 +22,7 @@ import { getSongsByIds } from "@/lib/user-played-songs/search-songs-for-match";
 import { insertPlayedSongs } from "@/lib/user-played-songs/insert-played-songs";
 import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 import { logPhotoMatchFailure } from "./log-match-failure";
+import { logPhotoMatchTrace } from "./log-match-trace";
 import {
   MIN_RESOLVE_CONFIDENCE,
   MIN_SCORE_SIDE_CONFIDENCE,
@@ -29,25 +38,28 @@ function visionTitleForStage(stage: StageVision): string | undefined {
   return stage.title_candidates[0]?.title;
 }
 
-function rowConfidence(stage: StageVision, resolveConfidence: number): number {
+function rowConfidence(
+  derived: DerivedStageContext | undefined,
+  resolveConfidence: number,
+): number {
   let confidence = resolveConfidence;
 
-  if (stage.score_confidence > 0) {
-    confidence = Math.min(confidence, stage.score_confidence);
+  if (
+    derived?.score_layout === "dual" &&
+    derived.score_side_confidence < MIN_SCORE_SIDE_CONFIDENCE
+  ) {
+    confidence = Math.min(confidence, derived.score_side_confidence);
   }
 
-  if (
-    stage.score_layout === "dual" &&
-    stage.score_side_confidence < MIN_SCORE_SIDE_CONFIDENCE
-  ) {
-    confidence = Math.min(confidence, stage.score_side_confidence);
+  if (derived && derived.difficulty_border_confidence > 0) {
+    confidence = Math.min(confidence, derived.difficulty_border_confidence);
   }
 
   return confidence;
 }
 
 function computeOverallConfidence(
-  stages: StageVision[],
+  derivedContexts: DerivedStageContext[],
   plays: DdrResolvedPlays["plays"],
 ): number {
   if (plays.length === 0) {
@@ -56,13 +68,22 @@ function computeOverallConfidence(
 
   return Math.min(
     ...plays.map((play) => {
-      const stage = stages.find((entry) => entry.stage === play.stage);
-      if (!stage) {
-        return play.resolve_confidence;
-      }
-      return rowConfidence(stage, play.resolve_confidence);
+      const derived = derivedContexts.find(
+        (entry) => entry.stage === play.stage,
+      );
+      return rowConfidence(derived, play.resolve_confidence);
     }),
   );
+}
+
+function visionScreenContext(
+  vision: Extract<DdrVisionParseResult, { status: "success" }>,
+) {
+  return {
+    played_player: vision.played_player ?? null,
+    played_player_confidence: vision.played_player_confidence,
+    played_player_reason: vision.played_player_reason,
+  };
 }
 
 async function insertResolvedPlays(
@@ -161,31 +182,71 @@ export async function matchPhotoPlay(
       });
     }
 
+    const screen = visionScreenContext(vision);
+    const derivedContexts = deriveStageContexts(
+      usableStages,
+      capture.player_side,
+      screen,
+    );
+
     const candidatesByStage = await searchCandidatesForVision(
       usableStages,
       capture.chart_type,
     );
 
+    const candidateCounts = candidatesByStage.map((candidates) => ({
+      before: candidates.length,
+      after: candidates.length,
+    }));
+
+    const filteredCandidates = filterCandidatesByDifficulty(
+      derivedContexts,
+      candidatesByStage,
+    );
+
+    for (let index = 0; index < candidateCounts.length; index++) {
+      candidateCounts[index].after = filteredCandidates[index]?.length ?? 0;
+    }
+
     const resolved = await resolvePlaysFromCandidates(
       usableStages,
-      candidatesByStage,
+      derivedContexts,
+      filteredCandidates,
       {
         hint: options.hint ?? capture.hint,
       },
     );
 
     const overallConfidence = computeOverallConfidence(
-      usableStages,
+      derivedContexts,
       resolved.plays,
     );
 
-    if (!options.forceAutoLog && overallConfidence < MIN_RESOLVE_CONFIDENCE) {
-      const rows = await buildPreviewRows(usableStages, resolved);
-      return { mode: "preview", rows, overallConfidence };
-    }
+    const outcome: PhotoMatchOutcome =
+      !options.forceAutoLog && overallConfidence < MIN_RESOLVE_CONFIDENCE
+        ? {
+            mode: "preview",
+            rows: await buildPreviewRows(usableStages, resolved),
+            overallConfidence,
+          }
+        : {
+            mode: "logged",
+            result: await insertResolvedPlays(capture, resolved),
+          };
 
-    const result = await insertResolvedPlays(capture, resolved);
-    return { mode: "logged", result };
+    logPhotoMatchTrace({
+      playerSide: capture.player_side,
+      chartType: capture.chart_type,
+      screen,
+      stages: usableStages,
+      derivedContexts,
+      resolved,
+      candidatesByStage: candidateCounts,
+      overallConfidence,
+      outcome: outcome.mode,
+    });
+
+    return outcome;
   } catch (err) {
     logPhotoMatchFailure(err, {
       userId: capture.user_id,

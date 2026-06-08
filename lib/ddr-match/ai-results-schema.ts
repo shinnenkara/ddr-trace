@@ -11,8 +11,8 @@ export type PlayerSide = (typeof PLAYER_SIDES)[number];
 export const SCORE_LAYOUTS = ["single", "dual"] as const;
 export type ScoreLayout = (typeof SCORE_LAYOUTS)[number];
 
-export const SCORE_SIDES = ["left", "right"] as const;
-export type ScoreSide = (typeof SCORE_SIDES)[number];
+export const SELECTED_PLAYERS = ["p1", "p2"] as const;
+export type SelectedPlayer = (typeof SELECTED_PLAYERS)[number];
 
 export const titleCandidateSchema = z.object({
   title: z.string().min(1),
@@ -22,31 +22,53 @@ export const titleCandidateSchema = z.object({
 
 export type TitleCandidate = z.infer<typeof titleCandidateSchema>;
 
+export const borderCandidateSchema = z.object({
+  color: z.enum(DIFFICULTY_COLORS),
+  confidence: z.number().min(0).max(1),
+  short_reason: z.string().min(1),
+});
+
+export type BorderCandidate = z.infer<typeof borderCandidateSchema>;
+
+export const playerColumnStatsSchema = z.object({
+  score: z.number().int().min(0).max(MAX_ARCADE_SCORE).nullable(),
+  difficulty_border: z.array(borderCandidateSchema).max(3),
+  grade: z.string().nullable().optional(),
+});
+
+export type PlayerColumnStats = z.infer<typeof playerColumnStatsSchema>;
+
 export const stageVisionSchema = z.object({
   stage: z.number().int().min(1).max(3),
   title_candidates: z.array(titleCandidateSchema).max(10),
-  score_layout: z.enum(SCORE_LAYOUTS),
-  left_score: z.number().int().min(0).max(MAX_ARCADE_SCORE).nullable(),
-  right_score: z.number().int().min(0).max(MAX_ARCADE_SCORE).nullable(),
-  arcade_score: z.number().int().min(0).max(MAX_ARCADE_SCORE).nullable(),
-  score_confidence: z.number().min(0).max(1),
-  score_side: z.enum(SCORE_SIDES).nullable(),
-  score_side_confidence: z.number().min(0).max(1),
-  score_selection_reason: z.string(),
-  difficulty_color: z.enum(DIFFICULTY_COLORS).nullable(),
-  difficulty_color_alternates: z
-    .array(z.enum(DIFFICULTY_COLORS))
-    .max(2)
-    .optional(),
+  p1: playerColumnStatsSchema.nullable().optional(),
+  p2: playerColumnStatsSchema.nullable().optional(),
 });
 
 export type StageVision = z.infer<typeof stageVisionSchema>;
+
+export const derivedStageContextSchema = z.object({
+  stage: z.number().int().min(1).max(3),
+  selected_player: z.enum(SELECTED_PLAYERS),
+  score: z.number().int().min(0).max(MAX_ARCADE_SCORE).nullable(),
+  difficulty_color: z.enum(DIFFICULTY_COLORS).nullable(),
+  difficulty_border_confidence: z.number().min(0).max(1),
+  difficulty_border_reason: z.string(),
+  score_layout: z.enum(SCORE_LAYOUTS),
+  score_side_confidence: z.number().min(0).max(1),
+  difficulty_overridden_by_session_majority: z.boolean().optional(),
+});
+
+export type DerivedStageContext = z.infer<typeof derivedStageContextSchema>;
 
 export const ddrVisionParseSuccessSchema = z.object({
   status: z.literal("success"),
   looks_like_ddr_results: z.literal(true),
   screen_confidence: z.number().min(0).max(1),
   readability: z.enum(["clear", "partial"]),
+  played_player: z.enum(SELECTED_PLAYERS).nullable().optional(),
+  played_player_confidence: z.number().min(0).max(1).optional(),
+  played_player_reason: z.string().optional(),
   stages: z.array(stageVisionSchema).min(1).max(3),
 });
 
@@ -99,4 +121,10 @@ export type DdrCapture = {
   player_side: PlayerSide;
   user_id: string;
   played_at: Date;
+};
+
+export type VisionScreenContext = {
+  played_player?: SelectedPlayer | null;
+  played_player_confidence?: number;
+  played_player_reason?: string;
 };

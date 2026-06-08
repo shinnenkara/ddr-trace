@@ -8,24 +8,24 @@ export const DIFFICULTY_COLORS = [
 
 export type DifficultyColor = (typeof DIFFICULTY_COLORS)[number];
 
-/** Modern DDR difficulty colors on the results screen. */
+/** Arcade results-screen grade panel border colors (cabinet-specific mapping). */
 export const DIFFICULTY_COLOR_LEGEND: Record<
   DifficultyColor,
   { label: string; difficulties: string[] }
 > = {
-  green: {
-    label: "Beginner",
-    difficulties: ["Beginner", "(?) Beginner", "(?) Beginner (unused)"],
-  },
   blue: {
     label: "Basic",
     difficulties: ["Basic", "(?) Basic", "(?) Basic (unused)"],
   },
   yellow: {
+    label: "Basic",
+    difficulties: ["Basic", "(?) Basic", "(?) Basic (unused)"],
+  },
+  red: {
     label: "Difficult",
     difficulties: ["Difficult", "(?) Difficult", "(?) Difficult (unused)"],
   },
-  red: {
+  green: {
     label: "Expert",
     difficulties: ["Expert", "(?) Expert", "(?) Expert (unused)"],
   },

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { Song } from "@/lib/db/schema";
-import type { StageVision } from "./ai-results-schema";
 import {
   collectAllSearchTerms,
   collectSearchTermsForStage,
@@ -8,6 +7,7 @@ import {
   longestSearchToken,
   songMatchesSearchTerm,
 } from "./search-term-utils";
+import { makeStageVision } from "./test-helpers";
 
 function makeSong(overrides: Partial<Song> & Pick<Song, "id" | "title">): Song {
   return {
@@ -31,7 +31,7 @@ function makeSong(overrides: Partial<Song> & Pick<Song, "id" | "title">): Song {
 }
 
 describe("search term utils", () => {
-  const stage: StageVision = {
+  const stage = makeStageVision({
     stage: 1,
     title_candidates: [
       {
@@ -45,16 +45,17 @@ describe("search term utils", () => {
         short_reason: "likely read",
       },
     ],
-    score_layout: "single",
-    left_score: null,
-    right_score: null,
-    arcade_score: 1000,
-    score_confidence: 0.9,
-    score_side: null,
-    score_side_confidence: 1,
-    score_selection_reason: "Single score column",
-    difficulty_color: "red",
-  };
+    p1: {
+      score: 1000,
+      difficulty_border: [
+        {
+          color: "red",
+          confidence: 0.9,
+          short_reason: "strip beside grade",
+        },
+      ],
+    },
+  });
 
   it("extracts longest token for short low-confidence titles", () => {
     expect(longestSearchToken("PA")).toBeNull();

@@ -2,6 +2,7 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import type {
   DdrCapture,
+  DerivedStageContext,
   DdrResolvedPlay,
   DdrResolvedPlays,
   DdrVisionParseResult,
@@ -39,37 +40,46 @@ const VISION_SYSTEM_PROMPT = `You are a DDR (Dance Dance Revolution) arcade resu
 
 Your mission is to extract row data from photos. Partial crops, glare, angle, and Japanese/non-Latin titles are normal — always extract what you can see.
 
+Do NOT pick a single player column in vision when both are visible — extract BOTH p1 and p2 per row. Do NOT match to database songs.
+
 Priority order (most important first):
-1. Money scores per row — digits must be correct. Partial score columns are OK; use whichever column is visible.
-2. Difficulty chart bar color (green/blue/yellow/red/purple) — ignore grade badge colors (AAA, AA, A, B, etc.).
-3. Song title text as displayed — English, Japanese, katakana, symbols; partial fragments OK with multiple hypotheses.
+1. Per-player money scores (digits must be correct)
+2. Per-player difficulty_border hypotheses (colored strip only, with short_reason)
+3. title_candidates (center column song title hypotheses)
 
 Behavior rules:
 - List each visible song row top-to-bottom in stages[]. Row order IS the stage: 1st row = stage 1, 2nd = 2, 3rd = 3. Never read stage numbers from the screen.
-- status "success" if ANY row has a score OR title OR difficulty color. Partial crops without headers/backgrounds are valid.
+- status "success" if ANY row has a score, title, or difficulty border on any player. Partial crops are valid.
 - Never return readability "unreadable" if any digit or character is visible on any row.
-- Do not reject for "not full results screen" when row data exists.
-- Only status "error" when literally zero extractable row data (no scores, no title characters, no difficulty color on any row).
+- Only status "error" when literally zero extractable row data.
 
-For each row return:
-- title_candidates: 0–10 hypotheses sorted by confidence (partial reads → multiple lower-confidence candidates with honest short_reason)
-- score_layout: "single" or "dual" (both 1P left and 2P right columns visible)
-- left_score / right_score: money score integers or null
-- arcade_score: selected score (0–${MAX_ARCADE_SCORE.toLocaleString()}) or null
-- score_confidence: 0–1 confidence in arcade_score digits
-- score_side / score_side_confidence / score_selection_reason
-- difficulty_color and optional difficulty_color_alternates (max 2)
+Per stage return:
+- title_candidates: 0–10 hypotheses sorted by confidence
+- p1: Player 1 (left column) stats when visible, else omit/null
+- p2: Player 2 (right column) stats when visible, else omit/null
 
-Two-player scores (dual layout):
-- Read BOTH left_score and right_score when visible. Do not merge or average.
-- If user specifies player side (see User context): always use that column; score_side_confidence ~1.0.
-- If user side is auto: pick the column closer/larger in the photo; lower score_side_confidence when uncertain.
-- If only one column readable: score_layout "single".
+Per player (p1 / p2) when visible:
+- score: money score integer (0–${MAX_ARCADE_SCORE.toLocaleString()}) or null
+- difficulty_border: 0–3 hypotheses sorted by confidence, each with:
+  - color: border strip color only (green/blue/yellow/red/purple)
+  - confidence: 0–1
+  - short_reason: required — cite spatial location ("strip right of B+ grade, before jacket") and what was ignored ("not Skip button", "not grade letter fill")
+- grade: optional letter grade (A, B+, etc.) for debug — NEVER use grade color for difficulty_border
 
-Difficulty color legend (chart bar only):
+Border spatial guidance:
+- p1: vertical colored strip immediately RIGHT of the P1 grade letter, between letter and song jacket
+- p2: vertical colored strip immediately LEFT of the P2 grade letter, between jacket and grade letter
+- IGNORE: grade letter fill (yellow A, blue B/B+), jacket art interior, background sparkles, score digit colors, green Skip button, yellow "24" badge
+
+Border color legend:
 ${difficultyColorLegendForPrompt()}
 
-Do not match to database songs. Extract only what is visible in the image.
+Screen-level played_player (when user context is Auto):
+- played_player: "p1" or "p2" — which column is the photographed player's run
+- played_player_confidence: 0–1
+- played_player_reason: short explanation (photo angle, larger/closer column, etc.)
+When user specifies 1P or 2P: still extract both columns; played_player is optional.
+
 On success: looks_like_ddr_results true, readability "clear" or "partial".`;
 
 export function throwAiError(
@@ -95,10 +105,10 @@ export async function parseResultsScreenVision(
 
   const playerSideText =
     capture.player_side === "left"
-      ? "\nUser player side: left (1P) — always use the left score column."
+      ? "\nUser player side: left (1P) — extract both p1 and p2 columns when visible; code will use p1."
       : capture.player_side === "right"
-        ? "\nUser player side: right (2P) — always use the right score column."
-        : "\nUser player side: auto — infer closer/larger score column from photo perspective when dual scores are visible.";
+        ? "\nUser player side: right (2P) — extract both p1 and p2 columns when visible; code will use p2."
+        : "\nUser player side: auto — extract both p1 and p2 columns when visible; also return played_player + played_player_confidence for the photographed player's column.";
 
   const model = await getVisionModel();
 
@@ -133,7 +143,7 @@ export async function parseResultsScreenVision(
 
   let object: DdrVisionParseResult;
   try {
-    object = normalizeDdrVisionParse(raw, capture.player_side);
+    object = normalizeDdrVisionParse(raw);
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to parse AI response";
@@ -149,11 +159,13 @@ export async function parseResultsScreenVision(
 
 function buildResolvePrompt(
   stages: StageVision[],
+  derivedContexts: DerivedStageContext[],
   candidatesByStage: ResolveCandidate[][],
   hint?: string | null,
 ): string {
   const stageBlocks = stages
     .map((stage, index) => {
+      const derived = derivedContexts[index];
       const candidates = candidatesByStage[index] ?? [];
       const titleLines = stage.title_candidates
         .map(
@@ -172,17 +184,17 @@ function buildResolvePrompt(
               .join("\n")
           : "  (no candidates found)";
 
-      const colorAlternates =
-        stage.difficulty_color_alternates &&
-        stage.difficulty_color_alternates.length > 0
-          ? `, alternates: ${stage.difficulty_color_alternates.join(", ")}`
-          : "";
+      const sessionOverride = derived?.difficulty_overridden_by_session_majority
+        ? " (session majority override)"
+        : "";
 
       return `Stage ${stage.stage}:
   Vision title candidates:
 ${titleLines || "    (none)"}
-  difficulty_color: ${stage.difficulty_color ?? "unknown"}${colorAlternates}
-  arcade_score: ${stage.arcade_score ?? "unknown"} (score_confidence ${stage.score_confidence.toFixed(2)})
+  selected_player: ${derived?.selected_player ?? "unknown"}
+  difficulty_color: ${derived?.difficulty_color ?? "unknown"} (border_confidence ${(derived?.difficulty_border_confidence ?? 0).toFixed(2)})${sessionOverride}
+  border_reason: ${derived?.difficulty_border_reason || "(none)"}
+  arcade_score: ${derived?.score ?? "unknown"}
 Database candidates (already filtered to user's chart type):
 ${candidateLines}`;
     })
@@ -195,7 +207,11 @@ ${candidateLines}`;
 Rules:
 - Pick song_id ONLY from the candidates list for each stage.
 - Match title hypotheses and difficulty_color together when possible.
-- difficulty_color maps to difficulty labels (green=Beginner, blue=Basic, yellow=Difficult, red=Expert, purple=Challenge).
+- difficulty_color comes from the selected player's grade panel border, not the grade letter.
+- Strongly prefer candidates whose difficulty matches difficulty_color when border_confidence is high.
+- If border_confidence is low, weight title more but still prefer difficulty match when title is ambiguous.
+- difficulty_color maps to difficulty labels:
+${difficultyColorLegendForPrompt()}
 - Preserve arcade_score from vision unless clearly wrong.
 - Return resolve_confidence 0–1 per play reflecting match certainty.
 - If no candidate fits well, still pick the closest and set low resolve_confidence with explanation in match_reason.
@@ -245,6 +261,7 @@ function assertCandidatesMembership(
 
 async function resolveAmbiguousStages(
   stages: StageVision[],
+  derivedContexts: DerivedStageContext[],
   candidatesByStage: ResolveCandidate[][],
   hint?: string | null,
 ): Promise<DdrResolvedPlay[]> {
@@ -257,7 +274,7 @@ async function resolveAmbiguousStages(
   const { object: raw } = await generateObject({
     model,
     schema: ddrResolvedPlaysGeminiSchema,
-    prompt: buildResolvePrompt(stages, candidatesByStage, hint),
+    prompt: buildResolvePrompt(stages, derivedContexts, candidatesByStage, hint),
   });
 
   const normalized = normalizeDdrResolvedPlays(raw, stages);
@@ -274,14 +291,16 @@ async function resolveAmbiguousStages(
 
 export async function resolvePlaysFromCandidates(
   stages: StageVision[],
+  derivedContexts: DerivedStageContext[],
   candidatesByStage: ResolveCandidate[][],
   options: ResolveOptions = {},
 ): Promise<DdrResolvedPlays> {
-  const { resolved, ambiguousStages, ambiguousCandidates } =
-    tryDeterministicResolve(stages, candidatesByStage);
+  const { resolved, ambiguousStages, ambiguousDerived, ambiguousCandidates } =
+    tryDeterministicResolve(stages, derivedContexts, candidatesByStage);
 
   const aiResolved = await resolveAmbiguousStages(
     ambiguousStages,
+    ambiguousDerived,
     ambiguousCandidates,
     options.hint,
   );

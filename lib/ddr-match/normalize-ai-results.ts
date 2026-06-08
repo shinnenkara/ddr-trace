@@ -1,17 +1,17 @@
 import { z } from "zod";
 import { DIFFICULTY_COLORS, type DifficultyColor } from "./difficulty-colors";
 import {
+  type BorderCandidate,
   type DdrVisionParseResult,
   type DdrResolvedPlays,
-  type PlayerSide,
-  type ScoreLayout,
-  type ScoreSide,
+  type PlayerColumnStats,
   type StageVision,
   type TitleCandidate,
+  type VisionScreenContext,
 } from "./ai-results-schema";
 import { MAX_ARCADE_SCORE } from "@/lib/user-played-songs/chart-math";
 import {
-  MAX_DIFFICULTY_COLOR_ALTERNATES,
+  MAX_BORDER_CANDIDATES_PER_PLAYER,
   MAX_TITLE_CANDIDATES_PER_STAGE,
   VISION_ERROR_NOT_RESULTS,
   VISION_ERROR_TOO_BLURRY,
@@ -37,7 +37,19 @@ function preprocessBoolean(value: unknown): unknown {
   return value;
 }
 
-/** Flat schema — Gemini-friendly (no oneOf / boolean enums). */
+const borderCandidateGeminiSchema = z.object({
+  color: z.string(),
+  confidence: z.coerce.number(),
+  short_reason: z.string(),
+});
+
+const playerColumnStatsGeminiSchema = z.object({
+  score: z.coerce.number().nullable().optional(),
+  difficulty_border: z.array(borderCandidateGeminiSchema).optional(),
+  grade: z.string().nullable().optional(),
+});
+
+/** Gemini-friendly schema — nested p1/p2 per stage. */
 export const ddrVisionParseGeminiSchema = z.object({
   status: z.preprocess(preprocessLowerString, z.enum(["success", "error"])),
   looks_like_ddr_results: z.preprocess(
@@ -46,6 +58,9 @@ export const ddrVisionParseGeminiSchema = z.object({
   ),
   screen_confidence: z.coerce.number().optional(),
   readability: z.preprocess(preprocessLowerString, z.string().optional()),
+  played_player: z.preprocess(preprocessLowerString, z.string().optional()),
+  played_player_confidence: z.coerce.number().optional(),
+  played_player_reason: z.string().optional(),
   stages: z
     .array(
       z.object({
@@ -58,19 +73,8 @@ export const ddrVisionParseGeminiSchema = z.object({
             }),
           )
           .optional(),
-        arcade_score: z.coerce.number().nullable().optional(),
-        score_confidence: z.coerce.number().optional(),
-        score_layout: z.preprocess(
-          preprocessLowerString,
-          z.string().optional(),
-        ),
-        left_score: z.coerce.number().nullable().optional(),
-        right_score: z.coerce.number().nullable().optional(),
-        score_side: z.preprocess(preprocessLowerString, z.string().optional()),
-        score_side_confidence: z.coerce.number().optional(),
-        score_selection_reason: z.string().optional(),
-        difficulty_color: z.string().optional(),
-        difficulty_color_alternates: z.array(z.string()).optional(),
+        p1: playerColumnStatsGeminiSchema.nullable().optional(),
+        p2: playerColumnStatsGeminiSchema.nullable().optional(),
       }),
     )
     .optional(),
@@ -123,6 +127,18 @@ function normalizeDifficultyColor(
   return null;
 }
 
+function normalizePlayedPlayer(
+  raw: string | undefined,
+): VisionScreenContext["played_player"] {
+  if (raw === "p1" || raw === "1" || raw === "left") {
+    return "p1";
+  }
+  if (raw === "p2" || raw === "2" || raw === "right") {
+    return "p2";
+  }
+  return null;
+}
+
 function stageFromRowIndex(index: number): 1 | 2 | 3 {
   return Math.min(index + 1, 3) as 1 | 2 | 3;
 }
@@ -164,113 +180,77 @@ function normalizeTitleCandidates(
     .slice(0, MAX_TITLE_CANDIDATES_PER_STAGE);
 }
 
-function normalizeScoreSide(raw: string | undefined): ScoreSide | null {
-  if (raw === "left" || raw === "right") {
-    return raw;
-  }
-  return null;
+function normalizeBorderCandidates(
+  raw: Array<{ color: string; confidence: number; short_reason: string }>,
+): BorderCandidate[] {
+  const seen = new Set<string>();
+
+  return raw
+    .map((candidate) => {
+      const color = normalizeDifficultyColor(candidate.color);
+      if (!color) {
+        return null;
+      }
+      return {
+        color,
+        confidence: clampConfidence(candidate.confidence),
+        short_reason: candidate.short_reason.trim(),
+      };
+    })
+    .filter((candidate): candidate is BorderCandidate => candidate !== null)
+    .filter((candidate) => candidate.short_reason.length > 0)
+    .filter((candidate) => {
+      const key = candidate.color;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, MAX_BORDER_CANDIDATES_PER_PLAYER);
 }
 
-function inferScoreLayout(
-  raw: NonNullable<DdrVisionParseGemini["stages"]>[number],
-): ScoreLayout {
-  if (raw.score_layout === "dual") {
-    return "dual";
+function normalizePlayerColumnStats(
+  raw: z.infer<typeof playerColumnStatsGeminiSchema> | null | undefined,
+): PlayerColumnStats | null {
+  if (!raw) {
+    return null;
   }
 
-  const left = normalizeArcadeScore(raw.left_score);
-  const right = normalizeArcadeScore(raw.right_score);
+  const score = normalizeArcadeScore(raw.score);
+  const difficulty_border = normalizeBorderCandidates(
+    raw.difficulty_border ?? [],
+  );
 
-  if (left !== null && right !== null) {
-    return "dual";
+  if (score === null && difficulty_border.length === 0 && !raw.grade?.trim()) {
+    return null;
   }
-
-  return "single";
-}
-
-function applyPlayerSideOverride(
-  stage: StageVision,
-  playerSide: Exclude<PlayerSide, "auto">,
-): StageVision {
-  const selectedScore =
-    playerSide === "left" ? stage.left_score : stage.right_score;
 
   return {
-    ...stage,
-    arcade_score: selectedScore,
-    score_side: playerSide,
-    score_side_confidence: selectedScore !== null ? 1 : 0,
-    score_selection_reason: `User specified ${playerSide === "left" ? "1P (left)" : "2P (right)"}`,
-    score_confidence: selectedScore !== null ? stage.score_confidence : 0,
+    score,
+    difficulty_border,
+    grade: raw.grade?.trim() || undefined,
   };
 }
 
 function normalizeStageVision(
   raw: NonNullable<DdrVisionParseGemini["stages"]>[number],
   index: number,
-  playerSide: PlayerSide,
 ): StageVision {
-  const alternates = (raw.difficulty_color_alternates ?? [])
-    .map((color) => normalizeDifficultyColor(color))
-    .filter((color): color is DifficultyColor => color !== null)
-    .slice(0, MAX_DIFFICULTY_COLOR_ALTERNATES);
-
-  const scoreLayout = inferScoreLayout(raw);
-  const leftScore = normalizeArcadeScore(raw.left_score);
-  const rightScore = normalizeArcadeScore(raw.right_score);
-  let arcadeScore = normalizeArcadeScore(raw.arcade_score);
-  let scoreSide = normalizeScoreSide(raw.score_side);
-  let scoreSideConfidence = clampConfidence(raw.score_side_confidence ?? 0);
-  let scoreSelectionReason = raw.score_selection_reason?.trim() ?? "";
-
-  if (scoreLayout === "single") {
-    if (arcadeScore === null) {
-      arcadeScore = leftScore ?? rightScore;
-    }
-    scoreSide = null;
-    scoreSideConfidence = arcadeScore !== null ? 1 : 0;
-    if (!scoreSelectionReason) {
-      scoreSelectionReason =
-        arcadeScore !== null ? "Single score column on results row" : "";
-    }
-  } else if (playerSide === "left" || playerSide === "right") {
-    arcadeScore = playerSide === "left" ? leftScore : rightScore;
-    scoreSide = playerSide;
-    scoreSideConfidence = arcadeScore !== null ? 1 : 0;
-    scoreSelectionReason = `User specified ${playerSide === "left" ? "1P (left)" : "2P (right)"}`;
-  } else {
-    if (arcadeScore === null && scoreSide !== null) {
-      arcadeScore = scoreSide === "left" ? leftScore : rightScore;
-    }
-    if (!scoreSelectionReason) {
-      scoreSelectionReason =
-        scoreSide !== null
-          ? `Auto-selected ${scoreSide} column from photo perspective`
-          : "";
-    }
-  }
+  const p1 = normalizePlayerColumnStats(raw.p1);
+  const p2 = normalizePlayerColumnStats(raw.p2);
 
   const stage: StageVision = {
     stage: stageFromRowIndex(index),
     title_candidates: normalizeTitleCandidates(raw.title_candidates ?? []),
-    score_layout: scoreLayout,
-    left_score: leftScore,
-    right_score: rightScore,
-    arcade_score: arcadeScore,
-    score_confidence: clampConfidence(raw.score_confidence ?? 0),
-    score_side: scoreSide,
-    score_side_confidence: scoreSideConfidence,
-    score_selection_reason: scoreSelectionReason,
-    difficulty_color: normalizeDifficultyColor(raw.difficulty_color),
-    difficulty_color_alternates: alternates.length > 0 ? alternates : undefined,
   };
 
-  if (playerSide === "left" || playerSide === "right") {
-    return applyPlayerSideOverride(stage, playerSide);
+  if (p1) {
+    stage.p1 = p1;
   }
-
-  if (stage.arcade_score === null) {
-    stage.arcade_score = stage.left_score ?? stage.right_score;
+  if (p2) {
+    stage.p2 = p2;
   }
 
   return stage;
@@ -283,12 +263,13 @@ function hasRawRowSignals(
     const hasTitle = (stage.title_candidates ?? []).some(
       (candidate) => candidate.title.trim().length >= 1,
     );
-    const hasScore =
-      stage.arcade_score != null ||
-      stage.left_score != null ||
-      stage.right_score != null;
-    const hasColor = Boolean(stage.difficulty_color?.trim());
-    return hasTitle || hasScore || hasColor;
+    const p1 = normalizePlayerColumnStats(stage.p1);
+    const p2 = normalizePlayerColumnStats(stage.p2);
+    const hasScore = p1?.score != null || p2?.score != null;
+    const hasBorder =
+      (p1?.difficulty_border.length ?? 0) > 0 ||
+      (p2?.difficulty_border.length ?? 0) > 0;
+    return hasTitle || hasScore || hasBorder;
   });
 }
 
@@ -301,25 +282,32 @@ function canSalvageVisionParse(raw: DdrVisionParseGemini): boolean {
   );
 }
 
+function parseScreenContext(raw: DdrVisionParseGemini): VisionScreenContext {
+  return {
+    played_player: normalizePlayedPlayer(raw.played_player),
+    played_player_confidence:
+      raw.played_player_confidence !== undefined
+        ? clampConfidence(raw.played_player_confidence)
+        : undefined,
+    played_player_reason: raw.played_player_reason?.trim() || undefined,
+  };
+}
+
 export function stageHasUsableScore(stage: StageVision): boolean {
-  return (
-    stage.arcade_score !== null ||
-    stage.left_score !== null ||
-    stage.right_score !== null
-  );
+  return stage.p1?.score != null || stage.p2?.score != null;
 }
 
 export function stageHasExtractableSignal(stage: StageVision): boolean {
   return (
     stageHasUsableScore(stage) ||
     stage.title_candidates.some((candidate) => candidate.title.trim().length >= 1) ||
-    stage.difficulty_color !== null
+    (stage.p1?.difficulty_border.length ?? 0) > 0 ||
+    (stage.p2?.difficulty_border.length ?? 0) > 0
   );
 }
 
 export function normalizeDdrVisionParse(
   raw: DdrVisionParseGemini,
-  playerSide: PlayerSide = "auto",
 ): DdrVisionParseResult {
   const salvagedFromError =
     raw.status === "error" && canSalvageVisionParse(raw);
@@ -341,9 +329,7 @@ export function normalizeDdrVisionParse(
 
   const rawStages = raw.stages ?? [];
   if (rawStages.length === 0 || rawStages.length > 3) {
-    if (canSalvageVisionParse(raw)) {
-      // fall through to normalization below
-    } else {
+    if (!canSalvageVisionParse(raw)) {
       return {
         status: "error",
         error: VISION_ERROR_NOT_RESULTS,
@@ -352,8 +338,10 @@ export function normalizeDdrVisionParse(
     }
   }
 
+  const screen = parseScreenContext(raw);
+
   const stages = rawStages.map((stage, index) =>
-    normalizeStageVision(stage, index, playerSide),
+    normalizeStageVision(stage, index),
   );
 
   if (!stages.some(stageHasExtractableSignal)) {
@@ -374,6 +362,9 @@ export function normalizeDdrVisionParse(
     looks_like_ddr_results: true,
     screen_confidence: clampConfidence(raw.screen_confidence ?? 0.5),
     readability,
+    played_player: screen.played_player ?? undefined,
+    played_player_confidence: screen.played_player_confidence,
+    played_player_reason: screen.played_player_reason,
     stages,
   };
 }

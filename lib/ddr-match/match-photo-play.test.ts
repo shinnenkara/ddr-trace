@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DdrCapture, StageVision } from "./ai-results-schema";
+import type { DdrCapture } from "./ai-results-schema";
+import {
+  makeBorderCandidate,
+  makePlayerStats,
+  makeStageVision,
+} from "./test-helpers";
 import type { Song } from "@/lib/db/schema";
 import type { UserPlayedSong } from "@/lib/user-played-songs/user-played-song";
 
@@ -25,6 +30,10 @@ vi.mock("@/lib/user-played-songs/insert-played-songs", () => ({
 
 vi.mock("./log-match-failure", () => ({
   logPhotoMatchFailure: vi.fn(),
+}));
+
+vi.mock("./log-match-trace", () => ({
+  logPhotoMatchTrace: vi.fn(),
 }));
 
 import {
@@ -65,21 +74,22 @@ const mockPlay = {
   source: "photo",
 } as UserPlayedSong;
 
-const stage: StageVision = {
+const stage = makeStageVision({
   stage: 1,
   title_candidates: [
     { title: "Test Song", confidence: 0.9, short_reason: "clear" },
   ],
-  score_layout: "single",
-  left_score: null,
-  right_score: 837760,
-  arcade_score: 837760,
-  score_confidence: 0.95,
-  score_side: "right",
-  score_side_confidence: 1,
-  score_selection_reason: "user specified right",
-  difficulty_color: "yellow",
-};
+  p2: makePlayerStats({
+    score: 837760,
+    difficulty_border: [
+      makeBorderCandidate({
+        color: "red",
+        confidence: 0.95,
+        short_reason: "strip left of grade",
+      }),
+    ],
+  }),
+});
 
 describe("matchPhotoPlay", () => {
   beforeEach(() => {
@@ -126,6 +136,18 @@ describe("matchPhotoPlay", () => {
       expect(outcome.result.plays).toHaveLength(1);
     }
     expect(insertPlayedSongs).toHaveBeenCalledOnce();
+    expect(resolvePlaysFromCandidates).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.arrayContaining([
+        expect.objectContaining({
+          selected_player: "p2",
+          score: 837760,
+          difficulty_color: "red",
+        }),
+      ]),
+      expect.any(Array),
+      expect.any(Object),
+    );
   });
 
   it("returns preview when overall confidence is low", async () => {

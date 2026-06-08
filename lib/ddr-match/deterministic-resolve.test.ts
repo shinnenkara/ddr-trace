@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { tryDeterministicResolve } from "./deterministic-resolve";
-import type { ResolveCandidate, StageVision } from "./ai-results-schema";
+import type { ResolveCandidate } from "./ai-results-schema";
+import {
+  makeDerivedStageContext,
+  makeStageVision,
+} from "./test-helpers";
 
 describe("tryDeterministicResolve", () => {
-  const stage: StageVision = {
+  const stage = makeStageVision({
     stage: 1,
     title_candidates: [
       {
@@ -12,23 +16,21 @@ describe("tryDeterministicResolve", () => {
         short_reason: "clear",
       },
     ],
-    score_layout: "single",
-    left_score: null,
-    right_score: null,
-    arcade_score: 500000,
-    score_confidence: 1,
-    score_side: null,
-    score_side_confidence: 1,
-    score_selection_reason: "Single score column",
+  });
+
+  const derived = makeDerivedStageContext({
+    stage: 1,
+    score: 500000,
     difficulty_color: "red",
-  };
+    difficulty_border_confidence: 0.95,
+  });
 
   const candidates: ResolveCandidate[] = [
     {
       song_id: 10,
       title: "PARANOiA",
       artist: "180",
-      difficulty: "Expert",
+      difficulty: "Difficult",
       rating: 10,
     },
     {
@@ -41,7 +43,7 @@ describe("tryDeterministicResolve", () => {
   ];
 
   it("resolves deterministically when one high-confidence title matches one difficulty row", () => {
-    const result = tryDeterministicResolve([stage], [candidates]);
+    const result = tryDeterministicResolve([stage], [derived], [candidates]);
 
     expect(result.resolved).toHaveLength(1);
     expect(result.resolved[0].song_id).toBe(10);
@@ -67,10 +69,12 @@ describe("tryDeterministicResolve", () => {
           ],
         },
       ],
+      [derived],
       [candidates],
     );
 
     expect(result.resolved).toHaveLength(0);
     expect(result.ambiguousStages).toHaveLength(1);
+    expect(result.ambiguousDerived).toHaveLength(1);
   });
 });
