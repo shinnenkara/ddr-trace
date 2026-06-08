@@ -11,6 +11,6 @@ BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=http://localhost:3000
 
 RESEND_API_KEY=
-RESEND_DOMAIN=onboarding@resend.dev
+RESEND_DOMAIN=noreply@send.ddrtrace.xyz
 
 GOOGLE_GENERATIVE_AI_API_KEY=
