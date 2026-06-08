@@ -3,10 +3,15 @@ import { getSessionCookie } from "better-auth/cookies";
 import { defaultLocale, isLocale } from "@/lib/i18n/config";
 
 /**
- * Optimistic auth routing (Next.js 16 Proxy, formerly Middleware).
+ * Optimistic auth routing (Edge Middleware).
+ *
+ * Uses middleware.ts (Edge) instead of proxy.ts (Node) because
+ * @opennextjs/cloudflare does not support Node/proxy middleware yet.
+ * Next.js 16 will show a deprecation warning — safe to ignore until OpenNext
+ * Adapters API adds proxy support.
  *
  * This only checks for the presence of the better-auth session cookie — it does
- * NOT hit the database, per the Next.js guidance that Proxy runs on every
+ * NOT hit the database, per the Next.js guidance that middleware runs on every
  * request (including prefetches). The authoritative check happens server-side
  * via `getAuth().api.getSession(...)` where session data is actually needed.
  */
@@ -37,7 +42,7 @@ function applyLocaleCookie(request: NextRequest, response: NextResponse) {
   return response;
 }
 
-export function proxy(request: NextRequest): NextResponse {
+export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
   const hasSession = Boolean(getSessionCookie(request));
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
