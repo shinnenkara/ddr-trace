@@ -1,5 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  // Workers Builds (dashboard): build=`npm run build:cf`, deploy=`npm run deploy`, non-prod=`npm run upload`
   "main": ".open-next/worker.js",
   "name": "ddr-trace",
   "compatibility_date": "2026-06-06",
@@ -13,6 +14,7 @@
       "binding": "WORKER_SELF_REFERENCE",
       "service": "ddr-trace",
     },
+    
   ],
   "images": {
     "binding": "IMAGES",

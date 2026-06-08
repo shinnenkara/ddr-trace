@@ -1,5 +1,8 @@
 NEXTJS_ENV=development
 
+# Local dev only (.dev.vars). For Cloudflare Workers Builds, also add these as
+# "Build variables and secrets". For production runtime, set the same keys as
+# Worker variables/secrets in the dashboard.
 CLOUDFLARE_D1_TOKEN=
 CLOUDFLARE_ACCOUNT_ID=
 CLOUDFLARE_DATABASE_ID=

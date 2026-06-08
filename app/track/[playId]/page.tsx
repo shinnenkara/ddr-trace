@@ -8,6 +8,8 @@ type Props = {
   params: Promise<{ playId: string }>;
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function PlayDetailPage({ params }: Props) {
   const user = await getSessionUser();
   if (!user) {

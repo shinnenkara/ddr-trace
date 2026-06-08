@@ -7,6 +7,8 @@ import { getLocale } from "@/lib/i18n/get-locale";
 import { getUserPlays } from "@/lib/user-played-songs/get-user-plays";
 import { PlaysEmptyState, PlaysTable } from "./_components/plays-table";
 
+export const dynamic = "force-dynamic";
+
 export default async function TrackPage() {
   const user = await getSessionUser();
   if (!user) {
