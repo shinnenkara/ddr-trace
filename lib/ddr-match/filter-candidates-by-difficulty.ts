@@ -1,5 +1,8 @@
 import { difficultyColorToLabels } from "./difficulty-colors";
-import type { DerivedStageContext, ResolveCandidate } from "./ai-results-schema";
+import type {
+  DerivedStageContext,
+  ResolveCandidate,
+} from "./ai-results-schema";
 
 export function filterCandidatesByDifficulty(
   derivedContexts: DerivedStageContext[],

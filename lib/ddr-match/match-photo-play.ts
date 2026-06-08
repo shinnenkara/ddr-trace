@@ -147,7 +147,9 @@ async function buildPreviewRows(
       resolveConfidence: play.resolve_confidence,
     };
 
-    const visionTitle = stageVision ? visionTitleForStage(stageVision) : undefined;
+    const visionTitle = stageVision
+      ? visionTitleForStage(stageVision)
+      : undefined;
     if (visionTitle) {
       row.visionTitle = visionTitle;
     }

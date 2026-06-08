@@ -87,7 +87,11 @@ export function throwAiError(
   errorKind: "content" | "transient",
   context?: Record<string, unknown>,
 ): never {
-  console.error("[photo-match]", message, JSON.stringify({ errorKind, ...context }));
+  console.error(
+    "[photo-match]",
+    message,
+    JSON.stringify({ errorKind, ...context }),
+  );
 
   const err = new Error(message) as Error & {
     errorKind?: "content" | "transient";
@@ -274,7 +278,12 @@ async function resolveAmbiguousStages(
   const { object: raw } = await generateObject({
     model,
     schema: ddrResolvedPlaysGeminiSchema,
-    prompt: buildResolvePrompt(stages, derivedContexts, candidatesByStage, hint),
+    prompt: buildResolvePrompt(
+      stages,
+      derivedContexts,
+      candidatesByStage,
+      hint,
+    ),
   });
 
   const normalized = normalizeDdrResolvedPlays(raw, stages);

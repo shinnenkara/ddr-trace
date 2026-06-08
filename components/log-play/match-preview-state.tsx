@@ -25,12 +25,7 @@ type Props = {
   onMatch: (result: LogPlayResult) => void;
 };
 
-export function MatchPreviewState({
-  capture,
-  rows,
-  onRetake,
-  onMatch,
-}: Props) {
+export function MatchPreviewState({ capture, rows, onRetake, onMatch }: Props) {
   const dict = useDictionary();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();

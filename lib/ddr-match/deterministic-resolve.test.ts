@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { tryDeterministicResolve } from "./deterministic-resolve";
 import type { ResolveCandidate } from "./ai-results-schema";
-import {
-  makeDerivedStageContext,
-  makeStageVision,
-} from "./test-helpers";
+import { makeDerivedStageContext, makeStageVision } from "./test-helpers";
 
 describe("tryDeterministicResolve", () => {
   const stage = makeStageVision({

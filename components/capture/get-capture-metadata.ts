@@ -4,7 +4,9 @@ export type ImageMetadata = {
   createdAt?: Date;
 };
 
-export async function getCaptureMetadata(capture: Blob): Promise<ImageMetadata> {
+export async function getCaptureMetadata(
+  capture: Blob,
+): Promise<ImageMetadata> {
   const buffer = await capture.arrayBuffer();
   const dataView = new DataView(buffer);
   const tags = await ExifReader.loadView(dataView, { async: true });

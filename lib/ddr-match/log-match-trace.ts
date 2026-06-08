@@ -44,7 +44,8 @@ export function logPhotoMatchTrace(context: TraceContext): void {
       mode: context.outcome,
       overallConfidence: context.overallConfidence,
       played_player: context.screen?.played_player ?? null,
-      played_player_confidence: context.screen?.played_player_confidence ?? null,
+      played_player_confidence:
+        context.screen?.played_player_confidence ?? null,
       played_player_reason: context.screen?.played_player_reason ?? null,
       stages: context.stages.map((stage, index) => {
         const derived = context.derivedContexts[index];
@@ -58,7 +59,8 @@ export function logPhotoMatchTrace(context: TraceContext): void {
                 selected_player: derived.selected_player,
                 score: derived.score,
                 difficulty_color: derived.difficulty_color,
-                difficulty_border_confidence: derived.difficulty_border_confidence,
+                difficulty_border_confidence:
+                  derived.difficulty_border_confidence,
                 difficulty_border_reason: derived.difficulty_border_reason,
                 score_layout: derived.score_layout,
                 score_side_confidence: derived.score_side_confidence,

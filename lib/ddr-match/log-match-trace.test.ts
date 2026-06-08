@@ -74,7 +74,10 @@ describe("logPhotoMatchTrace", () => {
     expect(info).toHaveBeenCalledOnce();
     const payload = JSON.parse(String(info.mock.calls[0]?.[1])) as {
       stages: Array<{
-        p1: { score: number; difficulty_border: Array<{ color: string }> } | null;
+        p1: {
+          score: number;
+          difficulty_border: Array<{ color: string }>;
+        } | null;
         derived: { selected_player: string } | null;
       }>;
       played_player: string;

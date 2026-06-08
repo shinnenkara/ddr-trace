@@ -8,7 +8,10 @@ type Props = {
   showLowConfidenceHint?: boolean;
 };
 
-export function MatchedPlayRows({ rows, showLowConfidenceHint = false }: Props) {
+export function MatchedPlayRows({
+  rows,
+  showLowConfidenceHint = false,
+}: Props) {
   const dict = useDictionary();
 
   return (

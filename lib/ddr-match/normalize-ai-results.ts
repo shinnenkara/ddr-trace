@@ -276,9 +276,7 @@ function hasRawRowSignals(
 function canSalvageVisionParse(raw: DdrVisionParseGemini): boolean {
   const rawStages = raw.stages ?? [];
   return (
-    rawStages.length > 0 &&
-    rawStages.length <= 3 &&
-    hasRawRowSignals(rawStages)
+    rawStages.length > 0 && rawStages.length <= 3 && hasRawRowSignals(rawStages)
   );
 }
 
@@ -300,7 +298,9 @@ export function stageHasUsableScore(stage: StageVision): boolean {
 export function stageHasExtractableSignal(stage: StageVision): boolean {
   return (
     stageHasUsableScore(stage) ||
-    stage.title_candidates.some((candidate) => candidate.title.trim().length >= 1) ||
+    stage.title_candidates.some(
+      (candidate) => candidate.title.trim().length >= 1,
+    ) ||
     (stage.p1?.difficulty_border.length ?? 0) > 0 ||
     (stage.p2?.difficulty_border.length ?? 0) > 0
   );
@@ -392,8 +392,7 @@ export function normalizeDdrResolvedPlays(
         throw new Error("Resolved play has invalid arcade score");
       }
 
-      const stage =
-        expectedStages?.[index]?.stage ?? stageFromRowIndex(index);
+      const stage = expectedStages?.[index]?.stage ?? stageFromRowIndex(index);
 
       return {
         song_id: Math.round(play.song_id),
