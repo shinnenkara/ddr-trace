@@ -44,15 +44,12 @@ async function resizeCapture(capture: Blob): Promise<string> {
   return processedCapture;
 }
 
-async function processCapture(
-  captureSrc: string,
-  isUpload?: boolean,
-): Promise<ProcessedImage> {
+async function processCapture(captureSrc: string): Promise<ProcessedImage> {
   const response = await fetch(captureSrc);
   const blob = await response.blob();
 
   const [metadata, capture] = await Promise.all([
-    getCaptureMetadata(blob, isUpload),
+    getCaptureMetadata(blob),
     resizeCapture(blob),
   ]);
 
@@ -77,7 +74,7 @@ function prepareCapture(capture: ProcessedImage): CapturedImage {
 export async function fileToCapturedImage(file: File): Promise<CapturedImage> {
   const fileUrl = URL.createObjectURL(file);
   try {
-    const result = await processCapture(fileUrl, true);
+    const result = await processCapture(fileUrl);
     return prepareCapture(result);
   } finally {
     URL.revokeObjectURL(fileUrl);
@@ -90,8 +87,8 @@ type Props = {
 
 export function useCaptureImage({ onCapture }: Props) {
   const handleCapture = useCallback(
-    async (imageSrc: string, isUpload?: boolean) => {
-      const result = await processCapture(imageSrc, isUpload);
+    async (imageSrc: string) => {
+      const result = await processCapture(imageSrc);
       const capture = prepareCapture(result);
       onCapture(capture);
     },

@@ -4,14 +4,7 @@ export type ImageMetadata = {
   createdAt?: Date;
 };
 
-export async function getCaptureMetadata(
-  capture: Blob,
-  isUpload: boolean = false,
-): Promise<ImageMetadata> {
-  if (isUpload) {
-    return {};
-  }
-
+export async function getCaptureMetadata(capture: Blob): Promise<ImageMetadata> {
   const buffer = await capture.arrayBuffer();
   const dataView = new DataView(buffer);
   const tags = await ExifReader.loadView(dataView, { async: true });
@@ -30,7 +23,7 @@ const dateTags: string[] = [
   "DateTimeDigitized",
 ];
 
-function extractCaptureDate(tags: ExifReader.Tags): Date | undefined {
+export function extractCaptureDate(tags: ExifReader.Tags): Date | undefined {
   for (const tagName of dateTags) {
     if (!tags[tagName]?.description && tags[tagName]?.value) {
       continue;
@@ -51,7 +44,7 @@ function extractCaptureDate(tags: ExifReader.Tags): Date | undefined {
   return;
 }
 
-function parseExifDateString(s: string): Date | undefined {
+export function parseExifDateString(s: string): Date | undefined {
   const potentialDate = s.trim();
 
   let split = potentialDate.split(" ");
