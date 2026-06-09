@@ -22,6 +22,7 @@ vi.mock("./search-candidates-for-vision", () => ({
 
 vi.mock("@/lib/user-played-songs/search-songs-for-match", () => ({
   getSongsByIds: vi.fn(),
+  getDifficultyVariantsForSongs: vi.fn(),
 }));
 
 vi.mock("@/lib/user-played-songs/insert-played-songs", () => ({
@@ -41,7 +42,10 @@ import {
   resolvePlaysFromCandidates,
 } from "./get-ai-ddr-results";
 import { searchCandidatesForVision } from "./search-candidates-for-vision";
-import { getSongsByIds } from "@/lib/user-played-songs/search-songs-for-match";
+import {
+  getSongsByIds,
+  getDifficultyVariantsForSongs,
+} from "@/lib/user-played-songs/search-songs-for-match";
 import { insertPlayedSongs } from "@/lib/user-played-songs/insert-played-songs";
 import { confirmPhotoMatchPlays, matchPhotoPlay } from "./match-photo-play";
 
@@ -112,9 +116,10 @@ describe("matchPhotoPlay", () => {
         },
       ],
     ]);
+    vi.mocked(getDifficultyVariantsForSongs).mockResolvedValue(new Map());
   });
 
-  it("auto-logs when overall confidence is high", async () => {
+  it("returns preview even when overall confidence is high", async () => {
     vi.mocked(resolvePlaysFromCandidates).mockResolvedValue({
       plays: [
         {
@@ -127,15 +132,15 @@ describe("matchPhotoPlay", () => {
       ],
     });
     vi.mocked(getSongsByIds).mockResolvedValue([mockSong]);
-    vi.mocked(insertPlayedSongs).mockResolvedValue([mockPlay]);
 
     const outcome = await matchPhotoPlay(capture);
 
-    expect(outcome.mode).toBe("logged");
-    if (outcome.mode === "logged") {
-      expect(outcome.result.plays).toHaveLength(1);
+    expect(outcome.mode).toBe("preview");
+    if (outcome.mode === "preview") {
+      expect(outcome.rows).toHaveLength(1);
+      expect(outcome.rows[0].songId).toBe(42);
     }
-    expect(insertPlayedSongs).toHaveBeenCalledOnce();
+    expect(insertPlayedSongs).not.toHaveBeenCalled();
     expect(resolvePlaysFromCandidates).toHaveBeenCalledWith(
       expect.any(Array),
       expect.arrayContaining([
@@ -217,6 +222,9 @@ describe("confirmPhotoMatchPlays", () => {
           difficulty: "Difficult",
           arcadeScore: 837760,
           resolveConfidence: 0.4,
+          difficultyOptions: [
+            { songId: 42, difficulty: "Difficult", rating: 9 },
+          ],
         },
       ],
     );
@@ -240,6 +248,9 @@ describe("confirmPhotoMatchPlays", () => {
             difficulty: "Difficult",
             arcadeScore: 837760,
             resolveConfidence: 0.4,
+            difficultyOptions: [
+              { songId: 42, difficulty: "Difficult", rating: 9 },
+            ],
           },
         ],
       ),

@@ -12,24 +12,31 @@ import { Button } from "@/components/ui/button";
 import { DrawerFooter } from "@/components/ui/drawer";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { MatchedPlayRows } from "@/components/log-play/matched-play-rows";
 import { buildDdrCaptureFormData } from "@/components/log-play/build-ddr-capture-form-data";
 import type { MultiUploadItem } from "@/components/log-play/multi-upload-item";
-import { matchAndLogPlayAction } from "@/lib/user-played-songs/match-and-log-play-action";
+import { previewPhotoMatchAction } from "@/lib/user-played-songs/preview-photo-match-action";
+import { confirmPhotoMatchAction } from "@/lib/user-played-songs/confirm-photo-match-action";
 import type { ActionErrorKind } from "@/lib/api/action-data-state";
 import type { ChartType, PlayerSide } from "@/lib/ddr-match/ai-results-schema";
-import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
+import type { PreviewPlayRow } from "@/lib/ddr-match/photo-match-outcome";
 import { useDictionary } from "@/lib/i18n/dictionary-provider";
 import { cn } from "@/lib/utils";
 
 type QueueStatus = "queued" | "uploading" | "success" | "error";
+type QueuePhase = "matching" | "review";
 
 type QueueUploadItem = MultiUploadItem & {
   status: QueueStatus;
   error?: string;
   errorKind?: ActionErrorKind;
   hint?: string;
-  result?: LogPlayResult;
+  rows?: PreviewPlayRow[];
 };
+
+const selectClassName = cn(
+  "h-7 w-full rounded-md border border-input bg-input/20 px-2 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 md:text-xs/relaxed dark:bg-input/30",
+);
 
 type Props = {
   captures: MultiUploadItem[];
@@ -51,8 +58,11 @@ export function MultiPhotoQueueState({
   const [chartType, setChartType] = useState<ChartType>("single");
   const [playerSide, setPlayerSide] = useState<PlayerSide>("auto");
   const [isRunning, setIsRunning] = useState(false);
+  const [phase, setPhase] = useState<QueuePhase>("matching");
+  const [editableRows, setEditableRows] = useState<PreviewPlayRow[]>([]);
+  const [confirmPending, setConfirmPending] = useState(false);
+  const [confirmError, setConfirmError] = useState<string>();
   const itemsRef = useRef(items);
-  const isBatchFinishedTriggered = useRef(false);
 
   itemsRef.current = items;
 
@@ -60,7 +70,7 @@ export function MultiPhotoQueueState({
     setItems(
       captures.map((capture) => ({ ...capture, status: "queued", hint: "" })),
     );
-    isBatchFinishedTriggered.current = false;
+    setPhase("matching");
   }, [captures]);
 
   const uploadCapture = useCallback(
@@ -73,7 +83,7 @@ export function MultiPhotoQueueState({
                 status: "uploading",
                 error: undefined,
                 errorKind: undefined,
-                result: undefined,
+                rows: undefined,
               }
             : entry,
         ),
@@ -81,9 +91,10 @@ export function MultiPhotoQueueState({
 
       const latest = itemsRef.current.find((entry) => entry.id === item.id);
       const hint = latest?.hint?.trim() ? latest.hint.trim() : undefined;
+      const playedAt = (item.capture.date ?? new Date()).toISOString();
 
       try {
-        const response = await matchAndLogPlayAction(
+        const response = await previewPhotoMatchAction(
           {},
           buildDdrCaptureFormData(item.capture, {
             hint,
@@ -92,7 +103,8 @@ export function MultiPhotoQueueState({
           }),
         );
 
-        if (response.data) {
+        if (response.data?.mode === "preview") {
+          const rows = response.data.rows.map((row) => ({ ...row, playedAt }));
           setItems((previous) =>
             previous.map((entry) =>
               entry.id === item.id
@@ -101,7 +113,7 @@ export function MultiPhotoQueueState({
                     status: "success",
                     error: undefined,
                     errorKind: undefined,
-                    result: response.data,
+                    rows,
                   }
                 : entry,
             ),
@@ -119,7 +131,7 @@ export function MultiPhotoQueueState({
                     response.error ??
                     dict.logPlay.photo.multiQueue.uploadFailed,
                   errorKind: response.errorKind,
-                  result: undefined,
+                  rows: undefined,
                 }
               : entry,
           ),
@@ -135,7 +147,7 @@ export function MultiPhotoQueueState({
                     error instanceof Error
                       ? error.message
                       : dict.logPlay.photo.multiQueue.uploadFailed,
-                  result: undefined,
+                  rows: undefined,
                 }
               : entry,
           ),
@@ -198,19 +210,6 @@ export function MultiPhotoQueueState({
     };
   }, [items]);
 
-  useEffect(() => {
-    if (!stats.isCompleted || isBatchFinishedTriggered.current) {
-      return;
-    }
-
-    isBatchFinishedTriggered.current = true;
-    onBatchFinished?.({
-      total: stats.total,
-      success: stats.success,
-      failed: stats.failed,
-    });
-  }, [onBatchFinished, stats]);
-
   const handleReupload = async (itemId: string) => {
     const item = items.find((entry) => entry.id === itemId);
     if (!item) {
@@ -228,6 +227,43 @@ export function MultiPhotoQueueState({
     );
   };
 
+  const handleReview = () => {
+    const rows = items
+      .filter((item) => item.status === "success" && item.rows)
+      .flatMap((item) => item.rows ?? []);
+    setEditableRows(rows);
+    setConfirmError(undefined);
+    setPhase("review");
+  };
+
+  const handleLogAll = async () => {
+    setConfirmPending(true);
+    setConfirmError(undefined);
+
+    try {
+      const formData = new FormData();
+      formData.set("played_at", new Date().toISOString());
+      formData.set("rows", JSON.stringify(editableRows));
+      const result = await confirmPhotoMatchAction({}, formData);
+
+      if (result.error) {
+        setConfirmError(result.error);
+        return;
+      }
+
+      onBatchFinished?.({
+        total: stats.total,
+        success: stats.success,
+        failed: stats.failed,
+      });
+      onDone();
+    } catch {
+      setConfirmError(dict.logPlay.photo.multiQueue.uploadFailed);
+    } finally {
+      setConfirmPending(false);
+    }
+  };
+
   const statusLabel = (status: QueueStatus) => {
     switch (status) {
       case "queued":
@@ -241,6 +277,48 @@ export function MultiPhotoQueueState({
     }
   };
 
+  if (phase === "review") {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="max-h-[60vh] flex-1 overflow-y-auto px-4">
+          <h3 className="mb-2 text-sm font-medium">
+            {dict.logPlay.photo.multiQueue.reviewTitle}
+          </h3>
+          <MatchedPlayRows
+            rows={editableRows}
+            onRowsChange={setEditableRows}
+            showReviewHint
+          />
+          {confirmError && (
+            <p className="mt-2 text-sm text-destructive">{confirmError}</p>
+          )}
+        </div>
+
+        <DrawerFooter className="grid grid-cols-2 gap-4 pt-2">
+          <Button
+            variant="outline"
+            type="button"
+            disabled={confirmPending}
+            onClick={() => setPhase("matching")}
+          >
+            {dict.logPlay.photo.multiQueue.back}
+          </Button>
+          <Button
+            type="button"
+            disabled={confirmPending || editableRows.length === 0}
+            onClick={() => void handleLogAll()}
+          >
+            {confirmPending
+              ? dict.logPlay.photo.multiQueue.logging
+              : dict.logPlay.photo.multiQueue.logAll}
+          </Button>
+        </DrawerFooter>
+      </div>
+    );
+  }
+
+  const noMatches = stats.isCompleted && stats.success === 0;
+
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pb-2">
@@ -253,9 +331,7 @@ export function MultiPhotoQueueState({
             value={chartType}
             onChange={(event) => setChartType(event.target.value as ChartType)}
             disabled={isRunning}
-            className={cn(
-              "h-7 w-full rounded-md border border-input bg-input/20 px-2 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 md:text-xs/relaxed dark:bg-input/30",
-            )}
+            className={selectClassName}
           >
             <option value="single">{dict.songs.type.single}</option>
             <option value="double">{dict.songs.type.double}</option>
@@ -272,9 +348,7 @@ export function MultiPhotoQueueState({
               setPlayerSide(event.target.value as PlayerSide)
             }
             disabled={isRunning}
-            className={cn(
-              "h-7 w-full rounded-md border border-input bg-input/20 px-2 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 md:text-xs/relaxed dark:bg-input/30",
-            )}
+            className={selectClassName}
           >
             <option value="auto">{dict.logPlay.photo.playerSideAuto}</option>
             <option value="left">{dict.logPlay.photo.playerSideLeft}</option>
@@ -330,11 +404,11 @@ export function MultiPhotoQueueState({
                       {item.error}
                     </p>
                   ) : null}
-                  {item.result ? (
+                  {item.rows ? (
                     <p className="mt-1 text-xs text-muted-foreground">
                       {dict.logPlay.photo.successDescription.replace(
                         "{count}",
-                        String(item.result.plays.length),
+                        String(item.rows.length),
                       )}
                     </p>
                   ) : null}
@@ -354,19 +428,37 @@ export function MultiPhotoQueueState({
             </li>
           ))}
         </ul>
+        {noMatches && (
+          <p className="py-2 text-sm text-muted-foreground">
+            {dict.logPlay.photo.multiQueue.noMatches}
+          </p>
+        )}
       </div>
 
       <DrawerFooter className="grid grid-cols-2 gap-4 pt-2">
-        <Button variant="outline" type="button" asChild>
-          <Link href="/track">{dict.logPlay.photo.viewPlays}</Link>
-        </Button>
-        <Button
-          type="button"
-          disabled={isRunning || !stats.isCompleted}
-          onClick={onDone}
-        >
-          {dict.logPlay.photo.multiQueue.done}
-        </Button>
+        {noMatches ? (
+          <>
+            <Button variant="outline" type="button" asChild>
+              <Link href="/track">{dict.logPlay.photo.viewPlays}</Link>
+            </Button>
+            <Button type="button" onClick={onDone}>
+              {dict.logPlay.photo.multiQueue.done}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="outline" type="button" asChild>
+              <Link href="/track">{dict.logPlay.photo.viewPlays}</Link>
+            </Button>
+            <Button
+              type="button"
+              disabled={isRunning || !stats.isCompleted || stats.success === 0}
+              onClick={handleReview}
+            >
+              {dict.logPlay.photo.multiQueue.review}
+            </Button>
+          </>
+        )}
       </DrawerFooter>
     </div>
   );

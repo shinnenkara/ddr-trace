@@ -18,13 +18,15 @@ import {
   filterUsableStages,
   stageHasExtractableSignal,
 } from "./normalize-ai-results";
-import { getSongsByIds } from "@/lib/user-played-songs/search-songs-for-match";
+import {
+  getSongsByIds,
+  getDifficultyVariantsForSongs,
+} from "@/lib/user-played-songs/search-songs-for-match";
 import { insertPlayedSongs } from "@/lib/user-played-songs/insert-played-songs";
 import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 import { logPhotoMatchFailure } from "./log-match-failure";
 import { logPhotoMatchTrace } from "./log-match-trace";
 import {
-  MIN_RESOLVE_CONFIDENCE,
   MIN_SCORE_SIDE_CONFIDENCE,
   VISION_ERROR_TOO_BLURRY,
 } from "./vision-errors";
@@ -126,6 +128,7 @@ async function buildPreviewRows(
   const songIds = resolved.plays.map((play) => play.song_id);
   const songs = await getSongsByIds(songIds);
   const songById = new Map(songs.map((song) => [song.id, song]));
+  const variantsBySongId = await getDifficultyVariantsForSongs(songs);
 
   const rows: PreviewPlayRow[] = [];
 
@@ -137,6 +140,10 @@ async function buildPreviewRows(
       continue;
     }
 
+    const difficultyOptions = variantsBySongId.get(song.id) ?? [
+      { songId: song.id, difficulty: song.difficulty, rating: song.rating },
+    ];
+
     const row: PreviewPlayRow = {
       stage: play.stage as 1 | 2 | 3,
       songId: play.song_id,
@@ -145,6 +152,7 @@ async function buildPreviewRows(
       difficulty: song.difficulty,
       arcadeScore: play.arcade_score,
       resolveConfidence: play.resolve_confidence,
+      difficultyOptions,
     };
 
     const visionTitle = stageVision
@@ -224,17 +232,16 @@ export async function matchPhotoPlay(
       resolved.plays,
     );
 
-    const outcome: PhotoMatchOutcome =
-      !options.forceAutoLog && overallConfidence < MIN_RESOLVE_CONFIDENCE
-        ? {
-            mode: "preview",
-            rows: await buildPreviewRows(usableStages, resolved),
-            overallConfidence,
-          }
-        : {
-            mode: "logged",
-            result: await insertResolvedPlays(capture, resolved),
-          };
+    const outcome: PhotoMatchOutcome = options.forceAutoLog
+      ? {
+          mode: "logged",
+          result: await insertResolvedPlays(capture, resolved),
+        }
+      : {
+          mode: "preview",
+          rows: await buildPreviewRows(usableStages, resolved),
+          overallConfidence,
+        };
 
     logPhotoMatchTrace({
       playerSide: capture.player_side,
@@ -266,11 +273,17 @@ export async function confirmPhotoMatchPlays(
 ): Promise<LogPlayResult> {
   const songIds = rows.map((row) => row.songId);
   const songs = await getSongsByIds(songIds);
-  const songIdSet = new Set(songs.map((song) => song.id));
+  const songById = new Map(songs.map((song) => [song.id, song]));
 
   for (const row of rows) {
-    if (!songIdSet.has(row.songId)) {
+    const song = songById.get(row.songId);
+    if (!song) {
       throw new Error(`Song id ${row.songId} was not found in database`);
+    }
+    if (song.difficulty !== row.difficulty) {
+      throw new Error(
+        `Difficulty "${row.difficulty}" does not match song id ${row.songId}`,
+      );
     }
   }
 
@@ -283,7 +296,7 @@ export async function confirmPhotoMatchPlays(
       arcadeScore: row.arcadeScore,
       stage: row.stage,
       batchId,
-      playedAt: capture.played_at,
+      playedAt: row.playedAt ? new Date(row.playedAt) : capture.played_at,
       source: "photo" as const,
     })),
   );

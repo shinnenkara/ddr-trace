@@ -176,6 +176,9 @@
       "preview": {
         "title": "Review matches",
         "lowConfidence": "We're not fully confident in these matches. Review before logging.",
+        "reviewHint": "Check each match below and adjust the difficulty or score before logging.",
+        "difficultyLabel": "Difficulty",
+        "scoreLabel": "Score",
         "confirm": "Match & log",
         "confirming": "Logging…",
         "stage": "Stage {stage}",
@@ -189,13 +192,19 @@
         "title": "Processing photos",
         "queued": "Queued",
         "uploading": "Matching…",
-        "success": "Logged",
+        "success": "Matched",
         "error": "Failed",
         "retry": "Retry",
         "done": "Done",
         "progress": "{done} of {total} complete",
         "batchSummary": "Logged {success} of {total} photo(s).",
-        "uploadFailed": "Match failed"
+        "uploadFailed": "Match failed",
+        "reviewTitle": "Review matches",
+        "review": "Review",
+        "logAll": "Log all",
+        "logging": "Logging…",
+        "back": "Back",
+        "noMatches": "No photos could be matched. Retake and try again."
       }
     }
   },

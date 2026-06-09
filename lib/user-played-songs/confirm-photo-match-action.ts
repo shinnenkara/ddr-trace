@@ -18,7 +18,7 @@ const confirmFormSchema = confirmPhotoMatchSchema.extend({
       return JSON.parse(value);
     }
     return value;
-  }, z.array(previewPlayRowSchema).min(1).max(3)),
+  }, z.array(previewPlayRowSchema).min(1)),
 });
 
 export async function confirmPhotoMatchAction(

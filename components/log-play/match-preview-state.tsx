@@ -29,6 +29,7 @@ export function MatchPreviewState({ capture, rows, onRetake, onMatch }: Props) {
   const dict = useDictionary();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  const [editableRows, setEditableRows] = useState<PreviewPlayRow[]>(rows);
 
   const handleConfirm = async () => {
     setPending(true);
@@ -36,7 +37,7 @@ export function MatchPreviewState({ capture, rows, onRetake, onMatch }: Props) {
 
     try {
       const formData = buildDdrCaptureFormData(capture);
-      formData.set("rows", JSON.stringify(rows));
+      formData.set("rows", JSON.stringify(editableRows));
       const result = await confirmPhotoMatchAction({}, formData);
 
       if (result.error) {
@@ -55,9 +56,9 @@ export function MatchPreviewState({ capture, rows, onRetake, onMatch }: Props) {
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-        <div className="flex justify-center">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-1">
+        <div className="flex shrink-0 justify-center">
           <Dialog>
             <DialogTrigger asChild>
               <Button
@@ -67,7 +68,7 @@ export function MatchPreviewState({ capture, rows, onRetake, onMatch }: Props) {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  className="size-[120px] object-cover"
+                  className="size-20 object-cover"
                   alt={dict.logPlay.photo.previewAlt}
                   src={capture.image}
                 />
@@ -90,12 +91,11 @@ export function MatchPreviewState({ capture, rows, onRetake, onMatch }: Props) {
           </Dialog>
         </div>
 
-        <div>
-          <h3 className="mb-2 text-sm font-medium">
-            {dict.logPlay.photo.preview.title}
-          </h3>
-          <MatchedPlayRows rows={rows} showLowConfidenceHint />
-        </div>
+        <MatchedPlayRows
+          rows={editableRows}
+          onRowsChange={setEditableRows}
+          showReviewHint
+        />
       </div>
 
       {error && <p className="px-4 text-sm text-destructive">{error}</p>}

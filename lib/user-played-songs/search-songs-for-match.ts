@@ -79,3 +79,52 @@ export async function getSongsByIds(ids: number[]): Promise<Song[]> {
 
   return results;
 }
+
+export type DifficultyVariant = {
+  songId: number;
+  difficulty: string;
+  rating: number;
+};
+
+/**
+ * For each input song, find all chart difficulties of the same chart
+ * (matched by title + artist + type) so the user can switch difficulty
+ * during review. Keyed by the input song id.
+ */
+export async function getDifficultyVariantsForSongs(
+  inputSongs: Song[],
+): Promise<Map<number, DifficultyVariant[]>> {
+  const variantsBySongId = new Map<number, DifficultyVariant[]>();
+
+  if (inputSongs.length === 0) {
+    return variantsBySongId;
+  }
+
+  const db = await getDb();
+
+  for (const song of inputSongs) {
+    const rows = await db
+      .select()
+      .from(songs)
+      .where(
+        and(
+          eq(songs.title, song.title),
+          eq(songs.artist, song.artist),
+          eq(songs.type, song.type),
+        ),
+      );
+
+    variantsBySongId.set(
+      song.id,
+      rows
+        .map((row) => ({
+          songId: row.id,
+          difficulty: row.difficulty,
+          rating: row.rating,
+        }))
+        .sort((a, b) => a.rating - b.rating),
+    );
+  }
+
+  return variantsBySongId;
+}

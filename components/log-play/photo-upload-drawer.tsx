@@ -78,7 +78,7 @@ export function PhotoUploadDrawer({ onClose }: Props) {
         <DrawerHeader>
           <DrawerTitle>{title}</DrawerTitle>
         </DrawerHeader>
-        <div className="m-4 mt-0">{content}</div>
+        <div className="m-4 mt-0 flex min-h-0 flex-1 flex-col">{content}</div>
       </DrawerContent>
     </Drawer>
   );
