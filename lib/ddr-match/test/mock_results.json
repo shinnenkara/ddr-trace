@@ -1,0 +1,130 @@
+[
+  {
+    "file": "test_p1_colors.jpeg",
+    "player": "p1",
+    "player_side": "left",
+    "chart_type": "single",
+    "stages": [
+      {
+        "stage": 1,
+        "song_title": "Angelic Jelly",
+        "difficulty_color": "yellow",
+        "difficulty": "Basic",
+        "arcadeScore": 851300,
+        "rank": "A+"
+      },
+      {
+        "stage": 2,
+        "song_title": "初音ミクの消失",
+        "difficulty_color": "yellow",
+        "difficulty": "Basic",
+        "arcadeScore": 876090,
+        "rank": "A+"
+      },
+      {
+        "stage": 3,
+        "song_title": "FUNKY SUMMER BEACH",
+        "difficulty_color": "red",
+        "difficulty": "Difficult",
+        "arcadeScore": 641680,
+        "rank": "E"
+      }
+    ]
+  },
+  {
+    "file": "test_double.jpeg",
+    "player": "p2",
+    "player_side": "right",
+    "chart_type": "double",
+    "stages": [
+      {
+        "stage": 1,
+        "song_title": "second spring storm",
+        "difficulty_color": "red",
+        "difficulty": "Difficult",
+        "arcadeScore": 728860,
+        "rank": "B"
+      },
+      {
+        "stage": 2,
+        "song_title": "Trust -DanceDanceRevolution mix-",
+        "difficulty_color": "red",
+        "difficulty": "Difficult",
+        "arcadeScore": 801280,
+        "rank": "A"
+      },
+      {
+        "stage": 3,
+        "song_title": "スイーツはとまらない♪",
+        "difficulty_color": "red",
+        "difficulty": "Difficult",
+        "arcadeScore": 827190,
+        "rank": "A"
+      }
+    ]
+  },
+  {
+    "file": "test_p2.jpeg",
+    "player": "p2",
+    "player_side": "right",
+    "chart_type": "single",
+    "stages": [
+      {
+        "stage": 1,
+        "song_title": "エイリアンエイリアン",
+        "difficulty_color": "red",
+        "difficulty": "Difficult",
+        "arcadeScore": 837760,
+        "rank": "A"
+      },
+      {
+        "stage": 2,
+        "song_title": "不沈艦CANDY",
+        "difficulty_color": "red",
+        "difficulty": "Difficult",
+        "arcadeScore": 733710,
+        "rank": "B"
+      },
+      {
+        "stage": 3,
+        "song_title": "スイーツはとまらない♪",
+        "difficulty_color": "red",
+        "difficulty": "Difficult",
+        "arcadeScore": 871840,
+        "rank": "A+"
+      }
+    ]
+  },
+  {
+    "file": "test_p1.jpeg",
+    "player": "p1",
+    "player_side": "left",
+    "chart_type": "single",
+    "stages": [
+      {
+        "stage": 1,
+        "song_title": "初音ミクの消失",
+        "difficulty_color": "red",
+        "difficulty": "Difficult",
+        "arcadeScore": 802310,
+        "rank": "A"
+      },
+      {
+        "stage": 2,
+        "song_title": "Crazy Shuffle",
+        "difficulty_color": "red",
+        "difficulty": "Difficult",
+        "arcadeScore": 232770,
+        "rank": "E"
+      },
+      {
+        "stage": 3,
+        "song_title": "はなまるぴっぴはよいこだけ",
+        "difficulty_color": "red",
+        "difficulty": "Difficult",
+        "arcadeScore": 783130,
+        "rank": "B+"
+      }
+    ]
+  }
+]

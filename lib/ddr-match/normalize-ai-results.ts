@@ -38,7 +38,11 @@ function preprocessBoolean(value: unknown): unknown {
 }
 
 const borderCandidateGeminiSchema = z.object({
-  color: z.string(),
+  color: z
+    .enum(DIFFICULTY_COLORS)
+    .describe(
+      "Thin vertical difficulty strip on the grade panel edge (NOT the grade letter fill color): green, blue, yellow, red, or purple.",
+    ),
   confidence: z.coerce.number(),
   short_reason: z.string(),
 });
@@ -105,6 +109,21 @@ function clampConfidence(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
+const DIFFICULTY_COLOR_SYNONYMS: Record<string, DifficultyColor> = {
+  orange: "yellow",
+  gold: "yellow",
+  amber: "yellow",
+  cyan: "blue",
+  "light blue": "blue",
+  "sky blue": "blue",
+  aqua: "blue",
+  lime: "green",
+  teal: "green",
+  violet: "purple",
+  magenta: "purple",
+  pink: "purple",
+};
+
 function normalizeDifficultyColor(
   raw: string | undefined,
 ): DifficultyColor | null {
@@ -116,6 +135,17 @@ function normalizeDifficultyColor(
 
   if ((DIFFICULTY_COLORS as readonly string[]).includes(key)) {
     return key as DifficultyColor;
+  }
+
+  const synonym = DIFFICULTY_COLOR_SYNONYMS[key];
+  if (synonym) {
+    return synonym;
+  }
+
+  for (const [alias, color] of Object.entries(DIFFICULTY_COLOR_SYNONYMS)) {
+    if (key.includes(alias)) {
+      return color;
+    }
   }
 
   for (const color of DIFFICULTY_COLORS) {
@@ -276,7 +306,9 @@ function hasRawRowSignals(
 function canSalvageVisionParse(raw: DdrVisionParseGemini): boolean {
   const rawStages = raw.stages ?? [];
   return (
-    rawStages.length > 0 && rawStages.length <= 3 && hasRawRowSignals(rawStages)
+    rawStages.length > 0 &&
+    rawStages.length <= 3 &&
+    hasRawRowSignals(rawStages)
   );
 }
 
@@ -298,9 +330,7 @@ export function stageHasUsableScore(stage: StageVision): boolean {
 export function stageHasExtractableSignal(stage: StageVision): boolean {
   return (
     stageHasUsableScore(stage) ||
-    stage.title_candidates.some(
-      (candidate) => candidate.title.trim().length >= 1,
-    ) ||
+    stage.title_candidates.some((candidate) => candidate.title.trim().length >= 1) ||
     (stage.p1?.difficulty_border.length ?? 0) > 0 ||
     (stage.p2?.difficulty_border.length ?? 0) > 0
   );
@@ -392,7 +422,8 @@ export function normalizeDdrResolvedPlays(
         throw new Error("Resolved play has invalid arcade score");
       }
 
-      const stage = expectedStages?.[index]?.stage ?? stageFromRowIndex(index);
+      const stage =
+        expectedStages?.[index]?.stage ?? stageFromRowIndex(index);
 
       return {
         song_id: Math.round(play.song_id),

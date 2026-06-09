@@ -19,10 +19,11 @@ export type CapturedImage = {
 };
 
 const captureOptions = {
-  maxSizeMB: 1,
-  maxWidthOrHeight: 1920,
+  maxSizeMB: 3,
+  maxWidthOrHeight: 2560,
   useWebWorker: true,
   fileType: "image/webp",
+  initialQuality: 0.92,
 };
 
 async function resizeCapture(capture: Blob): Promise<string> {

@@ -2,23 +2,73 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { buildResolvePrompt } from "./prompts/resolve-prompt";
+import {
+  buildVisionSystemPrompt,
+  buildVisionUserMessageText,
+} from "./prompts/vision-prompt";
 
-const source = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "get-ai-ddr-results.ts"),
+const promptsDir = join(dirname(fileURLToPath(import.meta.url)), "prompts");
+
+const visionSource = readFileSync(
+  join(promptsDir, "vision-prompt.ts"),
   "utf8",
 );
 
-describe("get-ai-ddr-results vision prompt", () => {
+const resolveSource = readFileSync(
+  join(promptsDir, "resolve-prompt.ts"),
+  "utf8",
+);
+
+describe("vision prompt", () => {
   it("asks for difficulty_border hypotheses with short_reason", () => {
-    expect(source).toContain("difficulty_border");
-    expect(source).toContain("short_reason");
-    expect(source).not.toContain("difficulty_border_color_alternates");
-    expect(source).not.toContain("score_confidence");
+    const prompt = buildVisionSystemPrompt();
+    expect(prompt).toContain("difficulty_border");
+    expect(prompt).toContain("short_reason");
+    expect(visionSource).not.toContain("difficulty_border_color_alternates");
+    expect(visionSource).not.toContain("score_confidence");
   });
 
+  it("keeps capture context on the user message only", () => {
+    const system = buildVisionSystemPrompt();
+    const user = buildVisionUserMessageText({
+      playerSide: "left",
+      hint: "cropped top row",
+    });
+
+    expect(system).not.toContain("User player side:");
+    expect(system).not.toContain("User hint:");
+    expect(user).toContain("User player side: left (1P)");
+    expect(user).toContain("User hint: cropped top row");
+  });
+});
+
+describe("resolve prompt", () => {
   it("buildResolvePrompt uses derived context fields", () => {
-    expect(source).toContain("border_reason:");
-    expect(source).toContain("derivedContexts");
-    expect(source).not.toContain("difficulty_color_alternates");
+    const prompt = buildResolvePrompt(
+      [
+        {
+          stage: 1,
+          title_candidates: [],
+        },
+      ],
+      [
+        {
+          stage: 1,
+          selected_player: "p1",
+          difficulty_color: "green",
+          difficulty_border_confidence: 0.9,
+          difficulty_border_reason: "strip visible",
+          score: 1_000_000,
+          difficulty_overridden_by_session_majority: false,
+        },
+      ],
+      [[]],
+    );
+
+    expect(prompt).toContain("border_reason:");
+    expect(prompt).toContain("strip visible");
+    expect(resolveSource).toContain("derivedContexts");
+    expect(resolveSource).not.toContain("difficulty_color_alternates");
   });
 });

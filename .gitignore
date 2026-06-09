@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+lib/ddr-match/eval/snapshots/
 
 # next.js
 /.next/
