@@ -29,4 +29,11 @@
       "migrations_dir": "./lib/db/migrations",
     },
   ],
+  "vars": {
+    "NEXTJS_ENV": "production",
+    "CLOUDFLARE_ACCOUNT_ID": "aa4ac551995d58b7e33becabab2c29e9",
+    "CLOUDFLARE_DATABASE_ID": "2e028203-de7a-4571-b2f6-4ada5d32498b",
+    "BETTER_AUTH_URL": "https://ddr-trace.shinnenkara.workers.dev",
+    "RESEND_DOMAIN": "noreply@send.ddrtrace.xyz",
+  }
 }
