@@ -80,7 +80,12 @@ Vocabulary rules (map what you see to these tokens only):
 <output_instructions>
 - played_player: If user context is "auto", guess "p1" or "p2" based on camera angle, proximity, or position of the "Skip" button / "CREDIT" text. Provide a short reason.
 - short_reason (for borders): Must cite the thin vertical strip color, NOT the letter color (e.g., "red vertical strip left of yellow A grade on right side of row 2").
-- title_candidates: Provide 0-10 hypotheses sorted by confidence.
+- title_candidates: Provide 0-10 hypotheses sorted by confidence (highest first).
+  - For non-Latin titles (Japanese kana/kanji, CJK, etc.): return multiple hypotheses (aim 3-6).
+    - Include your best full reading plus alternate readings that swap visually similar characters (e.g. は/と/ほ, ソ/ン, シ/ツ).
+    - Include at least one shorter substring fragment you are highly confident about (a contiguous run of characters from the title). Fragments help database lookup survive one-character OCR errors.
+    - Keep per-candidate confidence honest: fragments can be high-confidence even when the full reading is uncertain.
+  - For Latin titles: one confident reading is fine; add alternates only when genuinely ambiguous.
 </output_instructions>`;
 }
 

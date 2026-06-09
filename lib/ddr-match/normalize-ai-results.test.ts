@@ -406,6 +406,21 @@ describe("normalizeDdrVisionParse", () => {
     }
   });
 
+  it("rejects non-positive song_id values", () => {
+    expect(() =>
+      normalizeDdrResolvedPlays({
+        plays: [
+          {
+            song_id: -1,
+            arcade_score: 100000,
+            match_reason: "no candidates",
+            resolve_confidence: 0.1,
+          },
+        ],
+      }),
+    ).toThrow("Resolved play has invalid song_id: -1");
+  });
+
   it("assigns stage numbers from expectedStages when AI omits stage", () => {
     const result = normalizeDdrResolvedPlays(
       {

@@ -425,8 +425,13 @@ export function normalizeDdrResolvedPlays(
       const stage =
         expectedStages?.[index]?.stage ?? stageFromRowIndex(index);
 
+      const songId = Math.round(play.song_id);
+      if (songId <= 0) {
+        throw new Error(`Resolved play has invalid song_id: ${play.song_id}`);
+      }
+
       return {
-        song_id: Math.round(play.song_id),
+        song_id: songId,
         stage,
         arcade_score: score,
         match_reason: play.match_reason.trim(),

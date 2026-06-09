@@ -17,7 +17,10 @@ import {
 } from "./normalize-ai-results";
 import { getGoogleGenerativeAiApiKey } from "./get-google-api-key";
 import { tryDeterministicResolve } from "./deterministic-resolve";
-import { VISION_ERROR_TOO_BLURRY } from "./vision-errors";
+import {
+  VISION_ERROR_TOO_BLURRY,
+  visionErrorNoSongCandidatesForStage,
+} from "./vision-errors";
 import {
   buildVisionSystemPrompt,
   buildVisionUserMessageText,
@@ -173,6 +176,21 @@ function assertCandidatesMembership(
   }
 }
 
+function assertAmbiguousStagesHaveCandidates(
+  ambiguousStages: StageVision[],
+  ambiguousCandidates: ResolveCandidate[][],
+): void {
+  for (let index = 0; index < ambiguousStages.length; index++) {
+    const candidates = ambiguousCandidates[index] ?? [];
+    if (candidates.length === 0) {
+      const stage = ambiguousStages[index].stage;
+      throwAiError(visionErrorNoSongCandidatesForStage(stage), "transient", {
+        stage,
+      });
+    }
+  }
+}
+
 async function resolveAmbiguousStages(
   stages: StageVision[],
   derivedContexts: DerivedStageContext[],
@@ -218,6 +236,8 @@ export async function resolvePlaysFromCandidates(
 ): Promise<DdrResolvedPlays> {
   const { resolved, ambiguousStages, ambiguousDerived, ambiguousCandidates } =
     tryDeterministicResolve(stages, derivedContexts, candidatesByStage);
+
+  assertAmbiguousStagesHaveCandidates(ambiguousStages, ambiguousCandidates);
 
   const aiResolved = await resolveAmbiguousStages(
     ambiguousStages,
