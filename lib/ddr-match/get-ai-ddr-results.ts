@@ -24,7 +24,7 @@ import {
 } from "./prompts/vision-prompt";
 import { buildResolvePrompt } from "./prompts/resolve-prompt";
 
-const VISION_MODEL_ID = "gemini-2.5-flash-lite";
+const VISION_MODEL_ID = "gemini-2.5-flash";
 const RESOLVE_MODEL_ID = "gemini-2.5-flash-lite";
 
 export type VisionOptions = {
