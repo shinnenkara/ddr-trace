@@ -5,15 +5,14 @@ import type { CapturedImage } from "@/components/capture/use-capture-image";
 import type { ActionErrorKind } from "@/lib/api/action-data-state";
 import type { ChartType, PlayerSide } from "@/lib/ddr-match/ai-results-schema";
 import type { PreviewPlayRow } from "@/lib/ddr-match/photo-match-outcome";
-import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 
 type PreviewPayload = {
   rows: PreviewPlayRow[];
   overallConfidence: number;
+  chartType: ChartType;
 };
 
 type Props = {
-  onMatch: (result: LogPlayResult) => void;
   onPreview: (payload: PreviewPayload) => void;
 };
 
@@ -23,7 +22,7 @@ type SubmitOptions = {
   playerSide?: PlayerSide;
 };
 
-export function useInstantLogPlay({ onMatch, onPreview }: Props) {
+export function useInstantLogPlay({ onPreview }: Props) {
   const [error, setError] = useState<string>();
   const [errorKind, setErrorKind] = useState<ActionErrorKind>();
   const [pending, setPending] = useState(false);
@@ -34,10 +33,12 @@ export function useInstantLogPlay({ onMatch, onPreview }: Props) {
       setError(undefined);
       setErrorKind(undefined);
 
+      const chartType = options.chartType ?? "single";
+
       try {
         const formData = buildDdrCaptureFormData(capture, {
           hint: options.hint,
-          chartType: options.chartType ?? "single",
+          chartType,
           playerSide: options.playerSide ?? "auto",
         });
         const result = await previewPhotoMatchAction({}, formData);
@@ -48,15 +49,11 @@ export function useInstantLogPlay({ onMatch, onPreview }: Props) {
           return;
         }
 
-        if (result.data?.mode === "logged") {
-          onMatch(result.data.result);
-          return;
-        }
-
-        if (result.data?.mode === "preview") {
+        if (result.data) {
           onPreview({
             rows: result.data.rows,
             overallConfidence: result.data.overallConfidence,
+            chartType,
           });
         }
       } catch {
@@ -65,7 +62,7 @@ export function useInstantLogPlay({ onMatch, onPreview }: Props) {
         setPending(false);
       }
     },
-    [onMatch, onPreview],
+    [onPreview],
   );
 
   return { submit, error, errorKind, pending };

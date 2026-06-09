@@ -1,27 +1,36 @@
 import type {
+  ChartType,
   DdrCapture,
   DerivedStageContext,
-  DdrResolvedPlays,
+  DdrResolvedPlay,
   DdrVisionParseResult,
+  ResolveCandidate,
   StageVision,
 } from "./ai-results-schema";
-import type { PhotoMatchOutcome, PreviewPlayRow } from "./photo-match-outcome";
+import type {
+  PhotoMatchOutcome,
+  PreviewDifficultyOption,
+  PreviewPlayRow,
+  PreviewSongOption,
+} from "./photo-match-outcome";
+import type { RankedSong } from "./rank-candidates";
 import {
   parseResultsScreenVision,
   resolvePlaysFromCandidates,
   throwAiError,
 } from "./get-ai-ddr-results";
 import { searchCandidatesForVision } from "./search-candidates-for-vision";
-import { filterCandidatesByDifficulty } from "./filter-candidates-by-difficulty";
 import { deriveStageContexts } from "./derive-stage-context";
 import {
   filterUsableStages,
   stageHasExtractableSignal,
 } from "./normalize-ai-results";
 import {
-  getVariantsByIds,
-  getDifficultyVariantsForSongs,
-} from "@/lib/user-played-songs/search-songs-for-match";
+  buildDifficultyOptions,
+  pickDefaultVariant,
+  variantsForSong,
+} from "./pick-default-difficulty";
+import { getVariantsByIds } from "@/lib/user-played-songs/search-songs-for-match";
 import { insertPlayedSongs } from "@/lib/user-played-songs/insert-played-songs";
 import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 import { logPhotoMatchFailure } from "./log-match-failure";
@@ -33,7 +42,6 @@ import {
 
 type MatchPhotoPlayOptions = {
   hint?: string | null;
-  forceAutoLog?: boolean;
 };
 
 function visionTitleForStage(stage: StageVision): string | undefined {
@@ -42,9 +50,9 @@ function visionTitleForStage(stage: StageVision): string | undefined {
 
 function rowConfidence(
   derived: DerivedStageContext | undefined,
-  resolveConfidence: number,
+  matchScore: number,
 ): number {
-  let confidence = resolveConfidence;
+  let confidence = matchScore;
 
   if (
     derived?.score_layout === "dual" &&
@@ -62,7 +70,7 @@ function rowConfidence(
 
 function computeOverallConfidence(
   derivedContexts: DerivedStageContext[],
-  plays: DdrResolvedPlays["plays"],
+  plays: DdrResolvedPlay[],
 ): number {
   if (plays.length === 0) {
     return 0;
@@ -88,85 +96,104 @@ function visionScreenContext(
   };
 }
 
-async function insertResolvedPlays(
-  capture: DdrCapture,
-  resolved: DdrResolvedPlays,
-): Promise<LogPlayResult> {
-  const variantIds = resolved.plays.map((play) => play.song_id);
-  const variants = await getVariantsByIds(variantIds);
-  const variantIdSet = new Set(variants.map((variant) => variant.id));
-
-  for (const play of resolved.plays) {
-    if (!variantIdSet.has(play.song_id)) {
-      throw new Error(
-        `Matched song id ${play.song_id} was not found in database`,
-      );
-    }
-  }
-
-  const batchId = crypto.randomUUID();
-
-  const plays = await insertPlayedSongs(
-    resolved.plays.map((play) => ({
-      userId: capture.user_id,
-      songVariantId: play.song_id,
-      arcadeScore: play.arcade_score,
-      stage: play.stage ?? null,
-      batchId,
-      playedAt: capture.played_at,
-      source: "photo" as const,
-    })),
-  );
-
-  return { plays, batchId };
+function toSongOptions(ranked: RankedSong[]): PreviewSongOption[] {
+  return ranked.map((song) => ({
+    songDbId: song.song_db_id,
+    title: song.title,
+    artist: song.artist,
+    matchScore: song.matchScore,
+  }));
 }
 
-async function buildPreviewRows(
-  stages: StageVision[],
-  resolved: DdrResolvedPlays,
-): Promise<PreviewPlayRow[]> {
-  const variantIds = resolved.plays.map((play) => play.song_id);
-  const variants = await getVariantsByIds(variantIds);
-  const variantById = new Map(variants.map((variant) => [variant.id, variant]));
-  const variantsByVariantId = await getDifficultyVariantsForSongs(variants);
+function buildPreviewRow(
+  stage: StageVision,
+  play: DdrResolvedPlay,
+  derived: DerivedStageContext | undefined,
+  rankedSongs: RankedSong[],
+  candidates: ResolveCandidate[],
+): PreviewPlayRow | null {
+  if (play.stage == null) {
+    return null;
+  }
 
+  const songOptions = toSongOptions(rankedSongs);
+  const selectedVariant = candidates.find(
+    (candidate) => candidate.song_id === play.song_id,
+  );
+  const selectedSongDbId =
+    selectedVariant?.song_db_id ?? rankedSongs[0]?.song_db_id;
+
+  if (!selectedSongDbId) {
+    return null;
+  }
+
+  const selectedSong =
+    rankedSongs.find((song) => song.song_db_id === selectedSongDbId) ??
+    rankedSongs[0];
+
+  const songVariants = variantsForSong(candidates, selectedSongDbId);
+  const defaultVariant =
+    selectedVariant ?? pickDefaultVariant(songVariants, derived);
+
+  if (!defaultVariant || !selectedSong) {
+    return null;
+  }
+
+  const difficultyOptions: PreviewDifficultyOption[] = buildDifficultyOptions(
+    songVariants,
+    derived,
+  );
+
+  const row: PreviewPlayRow = {
+    stage: play.stage as 1 | 2 | 3,
+    songDbId: selectedSongDbId,
+    title: selectedSong.title,
+    artist: selectedSong.artist,
+    songOptions,
+    songId: defaultVariant.song_id,
+    difficulty: defaultVariant.difficulty,
+    difficultyOptions,
+    arcadeScore: play.arcade_score,
+    matchScore: selectedSong.matchScore,
+    matchSource: "ranked",
+    suggestedDifficultyColor: derived?.difficulty_color ?? null,
+  };
+
+  const visionTitle = visionTitleForStage(stage);
+  if (visionTitle) {
+    row.visionTitle = visionTitle;
+  }
+
+  return row;
+}
+
+function buildPreviewRows(
+  stages: StageVision[],
+  plays: DdrResolvedPlay[],
+  rankedSongsByStage: RankedSong[][],
+  candidatesByStage: ResolveCandidate[][],
+  derivedContexts: DerivedStageContext[],
+): PreviewPlayRow[] {
   const rows: PreviewPlayRow[] = [];
 
-  for (const play of resolved.plays) {
-    const variant = variantById.get(play.song_id);
-    const stageVision = stages.find((stage) => stage.stage === play.stage);
-
-    if (!variant || play.stage == null) {
+  for (const play of plays) {
+    const stageIndex = stages.findIndex((stage) => stage.stage === play.stage);
+    const stage = stages[stageIndex];
+    if (!stage) {
       continue;
     }
 
-    const difficultyOptions = variantsByVariantId.get(variant.id) ?? [
-      {
-        songId: variant.id,
-        difficulty: variant.difficulty,
-        rating: variant.rating,
-      },
-    ];
+    const row = buildPreviewRow(
+      stage,
+      play,
+      derivedContexts[stageIndex],
+      rankedSongsByStage[stageIndex] ?? [],
+      candidatesByStage[stageIndex] ?? [],
+    );
 
-    const row: PreviewPlayRow = {
-      stage: play.stage as 1 | 2 | 3,
-      songId: play.song_id,
-      title: variant.song.title,
-      artist: variant.song.artist,
-      difficulty: variant.difficulty,
-      arcadeScore: play.arcade_score,
-      resolveConfidence: play.resolve_confidence,
-      difficultyOptions,
-    };
-
-    const visionTitle = stageVision
-      ? visionTitleForStage(stageVision)
-      : undefined;
-    if (visionTitle) {
-      row.visionTitle = visionTitle;
+    if (row) {
+      rows.push(row);
     }
-
-    rows.push(row);
   }
 
   return rows;
@@ -213,19 +240,10 @@ export async function matchPhotoPlay(
       after: candidates.length,
     }));
 
-    const filteredCandidates = filterCandidatesByDifficulty(
-      derivedContexts,
-      candidatesByStage,
-    );
-
-    for (let index = 0; index < candidateCounts.length; index++) {
-      candidateCounts[index].after = filteredCandidates[index]?.length ?? 0;
-    }
-
-    const resolved = await resolvePlaysFromCandidates(
+    const { plays, rankedSongsByStage } = await resolvePlaysFromCandidates(
       usableStages,
       derivedContexts,
-      filteredCandidates,
+      candidatesByStage,
       {
         hint: options.hint ?? capture.hint,
       },
@@ -233,19 +251,19 @@ export async function matchPhotoPlay(
 
     const overallConfidence = computeOverallConfidence(
       derivedContexts,
-      resolved.plays,
+      plays,
     );
 
-    const outcome: PhotoMatchOutcome = options.forceAutoLog
-      ? {
-          mode: "logged",
-          result: await insertResolvedPlays(capture, resolved),
-        }
-      : {
-          mode: "preview",
-          rows: await buildPreviewRows(usableStages, resolved),
-          overallConfidence,
-        };
+    const outcome: PhotoMatchOutcome = {
+      rows: buildPreviewRows(
+        usableStages,
+        plays,
+        rankedSongsByStage,
+        candidatesByStage,
+        derivedContexts,
+      ),
+      overallConfidence,
+    };
 
     logPhotoMatchTrace({
       playerSide: capture.player_side,
@@ -253,10 +271,10 @@ export async function matchPhotoPlay(
       screen,
       stages: usableStages,
       derivedContexts,
-      resolved,
+      resolved: { plays },
       candidatesByStage: candidateCounts,
       overallConfidence,
-      outcome: outcome.mode,
+      outcome: "preview",
     });
 
     return outcome;
@@ -272,7 +290,9 @@ export async function matchPhotoPlay(
 }
 
 export async function confirmPhotoMatchPlays(
-  capture: Pick<DdrCapture, "user_id" | "played_at">,
+  capture: Pick<DdrCapture, "user_id" | "played_at"> & {
+    chart_type: ChartType;
+  },
   rows: PreviewPlayRow[],
 ): Promise<LogPlayResult> {
   const variantIds = rows.map((row) => row.songId);
@@ -283,6 +303,36 @@ export async function confirmPhotoMatchPlays(
     const variant = variantById.get(row.songId);
     if (!variant) {
       throw new Error(`Song id ${row.songId} was not found in database`);
+    }
+    if (variant.type !== capture.chart_type) {
+      throw new Error(
+        `Chart type "${capture.chart_type}" does not match song id ${row.songId}`,
+      );
+    }
+    if (row.matchSource === "ranked") {
+      const allowedSongIds = new Set(
+        row.songOptions.map((option) => option.songDbId),
+      );
+      if (!allowedSongIds.has(row.songDbId)) {
+        throw new Error(
+          `Song db id ${row.songDbId} is not in ranked song options for stage ${row.stage}`,
+        );
+      }
+
+      const allowedVariantIds = new Set(
+        row.difficultyOptions.map((option) => option.songId),
+      );
+      if (!allowedVariantIds.has(row.songId)) {
+        throw new Error(
+          `Song id ${row.songId} is not in difficulty options for stage ${row.stage}`,
+        );
+      }
+    }
+
+    if (variant.songId !== row.songDbId) {
+      throw new Error(
+        `Song db id ${row.songDbId} does not match variant ${row.songId}`,
+      );
     }
     if (variant.difficulty !== row.difficulty) {
       throw new Error(

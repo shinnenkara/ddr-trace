@@ -5,8 +5,6 @@ import type {
   StageVision,
   VisionScreenContext,
 } from "./ai-results-schema";
-import type { PhotoMatchOutcome } from "./photo-match-outcome";
-
 type TraceContext = {
   playerSide: string;
   chartType: string;
@@ -16,7 +14,7 @@ type TraceContext = {
   resolved: DdrResolvedPlays;
   candidatesByStage: Array<{ before: number; after: number }>;
   overallConfidence: number;
-  outcome: PhotoMatchOutcome["mode"];
+  outcome: "preview";
 };
 
 function logPlayerStats(stats: PlayerColumnStats | null | undefined) {

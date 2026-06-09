@@ -15,17 +15,25 @@ import { buildDdrCaptureFormData } from "@/components/log-play/build-ddr-capture
 import { confirmPhotoMatchAction } from "@/lib/user-played-songs/confirm-photo-match-action";
 import { useDictionary } from "@/lib/i18n/dictionary-provider";
 import type { CapturedImage } from "@/components/capture/use-capture-image";
+import type { ChartType } from "@/lib/ddr-match/ai-results-schema";
 import type { PreviewPlayRow } from "@/lib/ddr-match/photo-match-outcome";
 import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 
 type Props = {
   capture: CapturedImage;
   rows: PreviewPlayRow[];
+  chartType: ChartType;
   onRetake: () => void;
   onMatch: (result: LogPlayResult) => void;
 };
 
-export function MatchPreviewState({ capture, rows, onRetake, onMatch }: Props) {
+export function MatchPreviewState({
+  capture,
+  rows,
+  chartType,
+  onRetake,
+  onMatch,
+}: Props) {
   const dict = useDictionary();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -36,7 +44,7 @@ export function MatchPreviewState({ capture, rows, onRetake, onMatch }: Props) {
     setError(undefined);
 
     try {
-      const formData = buildDdrCaptureFormData(capture);
+      const formData = buildDdrCaptureFormData(capture, { chartType });
       formData.set("rows", JSON.stringify(editableRows));
       const result = await confirmPhotoMatchAction({}, formData);
 
@@ -94,6 +102,7 @@ export function MatchPreviewState({ capture, rows, onRetake, onMatch }: Props) {
         <MatchedPlayRows
           rows={editableRows}
           onRowsChange={setEditableRows}
+          chartType={chartType}
           showReviewHint
         />
       </div>

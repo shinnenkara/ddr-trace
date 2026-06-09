@@ -22,7 +22,6 @@ vi.mock("./search-candidates-for-vision", () => ({
 
 vi.mock("@/lib/user-played-songs/search-songs-for-match", () => ({
   getVariantsByIds: vi.fn(),
-  getDifficultyVariantsForSongs: vi.fn(),
 }));
 
 vi.mock("@/lib/user-played-songs/insert-played-songs", () => ({
@@ -42,10 +41,7 @@ import {
   resolvePlaysFromCandidates,
 } from "./get-ai-ddr-results";
 import { searchCandidatesForVision } from "./search-candidates-for-vision";
-import {
-  getVariantsByIds,
-  getDifficultyVariantsForSongs,
-} from "@/lib/user-played-songs/search-songs-for-match";
+import { getVariantsByIds } from "@/lib/user-played-songs/search-songs-for-match";
 import { insertPlayedSongs } from "@/lib/user-played-songs/insert-played-songs";
 import { confirmPhotoMatchPlays, matchPhotoPlay } from "./match-photo-play";
 
@@ -111,6 +107,25 @@ const stage = makeStageVision({
   }),
 });
 
+const variantCandidates = [
+  {
+    song_id: 42,
+    song_db_id: 1,
+    title: "Test Song",
+    artist: "Artist",
+    difficulty: "Difficult",
+    rating: 9,
+  },
+];
+
+const rankedSong = {
+  song_db_id: 1,
+  title: "Test Song",
+  artist: "Artist",
+  matchScore: 0.95,
+  matchReason: "exact title",
+};
+
 describe("matchPhotoPlay", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -122,20 +137,11 @@ describe("matchPhotoPlay", () => {
       stages: [stage],
     });
     vi.mocked(searchCandidatesForVision).mockResolvedValue([
-      [
-        {
-          song_id: 42,
-          title: "Test Song",
-          artist: "Artist",
-          difficulty: "Difficult",
-          rating: 9,
-        },
-      ],
+      variantCandidates,
     ]);
-    vi.mocked(getDifficultyVariantsForSongs).mockResolvedValue(new Map());
   });
 
-  it("returns preview even when overall confidence is high", async () => {
+  it("returns preview with song and difficulty options", async () => {
     vi.mocked(resolvePlaysFromCandidates).mockResolvedValue({
       plays: [
         {
@@ -146,32 +152,21 @@ describe("matchPhotoPlay", () => {
           resolve_confidence: 0.95,
         },
       ],
+      rankedSongsByStage: [[rankedSong]],
     });
-    vi.mocked(getVariantsByIds).mockResolvedValue([mockVariant]);
 
     const outcome = await matchPhotoPlay(capture);
 
-    expect(outcome.mode).toBe("preview");
-    if (outcome.mode === "preview") {
-      expect(outcome.rows).toHaveLength(1);
-      expect(outcome.rows[0].songId).toBe(42);
-    }
+    expect(outcome.rows).toHaveLength(1);
+    expect(outcome.rows[0].songDbId).toBe(1);
+    expect(outcome.rows[0].songOptions).toHaveLength(1);
+    expect(outcome.rows[0].difficultyOptions).toHaveLength(1);
+    expect(outcome.rows[0].songId).toBe(42);
+    expect(outcome.rows[0].matchSource).toBe("ranked");
     expect(insertPlayedSongs).not.toHaveBeenCalled();
-    expect(resolvePlaysFromCandidates).toHaveBeenCalledWith(
-      expect.any(Array),
-      expect.arrayContaining([
-        expect.objectContaining({
-          selected_player: "p2",
-          score: 837760,
-          difficulty_color: "red",
-        }),
-      ]),
-      expect.any(Array),
-      expect.any(Object),
-    );
   });
 
-  it("returns preview when overall confidence is low", async () => {
+  it("returns preview with low overall confidence", async () => {
     vi.mocked(resolvePlaysFromCandidates).mockResolvedValue({
       plays: [
         {
@@ -182,39 +177,16 @@ describe("matchPhotoPlay", () => {
           resolve_confidence: 0.4,
         },
       ],
+      rankedSongsByStage: [
+        [{ ...rankedSong, matchScore: 0.4, matchReason: "weak match" }],
+      ],
     });
-    vi.mocked(getVariantsByIds).mockResolvedValue([mockVariant]);
 
     const outcome = await matchPhotoPlay(capture);
 
-    expect(outcome.mode).toBe("preview");
-    if (outcome.mode === "preview") {
-      expect(outcome.rows).toHaveLength(1);
-      expect(outcome.rows[0].songId).toBe(42);
-      expect(outcome.overallConfidence).toBeLessThan(0.6);
-    }
+    expect(outcome.rows).toHaveLength(1);
+    expect(outcome.overallConfidence).toBeLessThan(0.6);
     expect(insertPlayedSongs).not.toHaveBeenCalled();
-  });
-
-  it("auto-logs low confidence when forceAutoLog is set", async () => {
-    vi.mocked(resolvePlaysFromCandidates).mockResolvedValue({
-      plays: [
-        {
-          song_id: 42,
-          stage: 1,
-          arcade_score: 837760,
-          match_reason: "weak match",
-          resolve_confidence: 0.4,
-        },
-      ],
-    });
-    vi.mocked(getVariantsByIds).mockResolvedValue([mockVariant]);
-    vi.mocked(insertPlayedSongs).mockResolvedValue([mockPlay]);
-
-    const outcome = await matchPhotoPlay(capture, { forceAutoLog: true });
-
-    expect(outcome.mode).toBe("logged");
-    expect(insertPlayedSongs).toHaveBeenCalledOnce();
   });
 });
 
@@ -223,30 +195,120 @@ describe("confirmPhotoMatchPlays", () => {
     vi.clearAllMocks();
   });
 
-  it("validates song ids and inserts confirmed rows", async () => {
+  const baseRow = {
+    stage: 1 as const,
+    songDbId: 1,
+    title: "Test Song",
+    artist: "Artist",
+    songOptions: [
+      {
+        songDbId: 1,
+        title: "Test Song",
+        artist: "Artist",
+        matchScore: 0.4,
+      },
+    ],
+    songId: 42,
+    difficulty: "Difficult",
+    difficultyOptions: [
+      {
+        songId: 42,
+        difficulty: "Difficult",
+        rating: 9,
+        suggested: true,
+      },
+    ],
+    arcadeScore: 837760,
+    matchScore: 0.4,
+    matchSource: "ranked" as const,
+  };
+
+  it("validates ranked song and difficulty options", async () => {
     vi.mocked(getVariantsByIds).mockResolvedValue([mockVariant]);
     vi.mocked(insertPlayedSongs).mockResolvedValue([mockPlay]);
 
     const result = await confirmPhotoMatchPlays(
-      { user_id: capture.user_id, played_at: capture.played_at },
-      [
-        {
-          stage: 1,
-          songId: 42,
-          title: "Test Song",
-          artist: "Artist",
-          difficulty: "Difficult",
-          arcadeScore: 837760,
-          resolveConfidence: 0.4,
-          difficultyOptions: [
-            { songId: 42, difficulty: "Difficult", rating: 9 },
-          ],
-        },
-      ],
+      {
+        user_id: capture.user_id,
+        played_at: capture.played_at,
+        chart_type: "single",
+      },
+      [baseRow],
     );
 
     expect(result.plays).toHaveLength(1);
     expect(insertPlayedSongs).toHaveBeenCalledOnce();
+  });
+
+  it("allows manual song picks outside ranked options", async () => {
+    vi.mocked(getVariantsByIds).mockResolvedValue([mockVariant]);
+    vi.mocked(insertPlayedSongs).mockResolvedValue([mockPlay]);
+
+    const result = await confirmPhotoMatchPlays(
+      {
+        user_id: capture.user_id,
+        played_at: capture.played_at,
+        chart_type: "single",
+      },
+      [{ ...baseRow, matchSource: "manual" }],
+    );
+
+    expect(result.plays).toHaveLength(1);
+  });
+
+  it("throws when ranked songDbId is not in song options", async () => {
+    vi.mocked(getVariantsByIds).mockResolvedValue([mockVariant]);
+
+    await expect(
+      confirmPhotoMatchPlays(
+        {
+          user_id: capture.user_id,
+          played_at: capture.played_at,
+          chart_type: "single",
+        },
+        [
+          {
+            ...baseRow,
+            songDbId: 99,
+            songOptions: [
+              {
+                songDbId: 1,
+                title: "Other",
+                artist: "Other",
+                matchScore: 0.3,
+              },
+            ],
+          },
+        ],
+      ),
+    ).rejects.toThrow("not in ranked song options");
+  });
+
+  it("throws when ranked variant is not in difficulty options", async () => {
+    vi.mocked(getVariantsByIds).mockResolvedValue([mockVariant]);
+
+    await expect(
+      confirmPhotoMatchPlays(
+        {
+          user_id: capture.user_id,
+          played_at: capture.played_at,
+          chart_type: "single",
+        },
+        [
+          {
+            ...baseRow,
+            songId: 42,
+            difficultyOptions: [
+              {
+                songId: 99,
+                difficulty: "Basic",
+                rating: 5,
+              },
+            ],
+          },
+        ],
+      ),
+    ).rejects.toThrow("not in difficulty options");
   });
 
   it("throws when a confirmed song id is missing from the database", async () => {
@@ -254,21 +316,12 @@ describe("confirmPhotoMatchPlays", () => {
 
     await expect(
       confirmPhotoMatchPlays(
-        { user_id: capture.user_id, played_at: capture.played_at },
-        [
-          {
-            stage: 1,
-            songId: 42,
-            title: "Test Song",
-            artist: "Artist",
-            difficulty: "Difficult",
-            arcadeScore: 837760,
-            resolveConfidence: 0.4,
-            difficultyOptions: [
-              { songId: 42, difficulty: "Difficult", rating: 9 },
-            ],
-          },
-        ],
+        {
+          user_id: capture.user_id,
+          played_at: capture.played_at,
+          chart_type: "single",
+        },
+        [{ ...baseRow, matchSource: "manual" }],
       ),
     ).rejects.toThrow("Song id 42 was not found in database");
   });

@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { getSessionUserFromRequest } from "@/lib/api/get-session-user";
 import { ddrCaptureSchema } from "@/lib/ddr-match/ddr-capture-schema";
-import { matchAndLogPlay } from "@/lib/ddr-match/parse-results-screen";
+import { matchPhotoPlay } from "@/lib/ddr-match/match-photo-play";
 import { formatActionError } from "@/lib/api/try-action";
 
 export async function POST(request: Request) {
@@ -19,8 +18,7 @@ export async function POST(request: Request) {
       ...raw,
       user_id: user.id,
     });
-    const data = await matchAndLogPlay(capture);
-    revalidatePath("/log");
+    const data = await matchPhotoPlay(capture);
 
     return NextResponse.json({ data });
   } catch (err) {

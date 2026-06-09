@@ -103,7 +103,7 @@ export function MultiPhotoQueueState({
           }),
         );
 
-        if (response.data?.mode === "preview") {
+        if (response.data) {
           const rows = response.data.rows.map((row) => ({ ...row, playedAt }));
           setItems((previous) =>
             previous.map((entry) =>
@@ -243,6 +243,7 @@ export function MultiPhotoQueueState({
     try {
       const formData = new FormData();
       formData.set("played_at", new Date().toISOString());
+      formData.set("chart_type", chartType);
       formData.set("rows", JSON.stringify(editableRows));
       const result = await confirmPhotoMatchAction({}, formData);
 
@@ -287,6 +288,7 @@ export function MultiPhotoQueueState({
           <MatchedPlayRows
             rows={editableRows}
             onRowsChange={setEditableRows}
+            chartType={chartType}
             showReviewHint
           />
           {confirmError && (

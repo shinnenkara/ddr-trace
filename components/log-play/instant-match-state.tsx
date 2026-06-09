@@ -16,29 +16,27 @@ import {
 import { useDictionary } from "@/lib/i18n/dictionary-provider";
 import type { ChartType, PlayerSide } from "@/lib/ddr-match/ai-results-schema";
 import type { PreviewPlayRow } from "@/lib/ddr-match/photo-match-outcome";
-import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 
 type Props = {
   capture: CapturedImage;
   onRetake: () => void;
-  onMatch: (result: LogPlayResult) => void;
   onPreview: (payload: {
     rows: PreviewPlayRow[];
     overallConfidence: number;
+    chartType: ChartType;
   }) => void;
 };
 
 export function InstantMatchState({
   capture,
   onRetake,
-  onMatch,
   onPreview,
 }: Props) {
   const dict = useDictionary();
   const [hint, setHint] = useState("");
   const [chartType, setChartType] = useState<ChartType>("single");
   const [playerSide, setPlayerSide] = useState<PlayerSide>("auto");
-  const { submit, error, pending } = useInstantLogPlay({ onMatch, onPreview });
+  const { submit, error, pending } = useInstantLogPlay({ onPreview });
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();

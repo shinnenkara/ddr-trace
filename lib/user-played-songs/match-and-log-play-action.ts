@@ -4,26 +4,21 @@ import { Validator } from "@/lib/api/validator";
 import { tryAction } from "@/lib/api/try-action";
 import type { ActionDataState } from "@/lib/api/action-data-state";
 import { ddrCaptureSchema } from "@/lib/ddr-match/ddr-capture-schema";
-import { matchAndLogPlay } from "@/lib/ddr-match/parse-results-screen";
-import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
-import { revalidatePath } from "next/cache";
+import { matchPhotoPlay } from "@/lib/ddr-match/match-photo-play";
+import type { PhotoMatchOutcome } from "@/lib/ddr-match/photo-match-outcome";
 
+/** @deprecated Auto-log removed — returns preview outcome for review. */
 export async function matchAndLogPlayAction(
-  _prevState: ActionDataState<LogPlayResult>,
+  _prevState: ActionDataState<PhotoMatchOutcome>,
   formData: FormData,
-): Promise<ActionDataState<LogPlayResult>> {
+): Promise<ActionDataState<PhotoMatchOutcome>> {
   const validator = new Validator(ddrCaptureSchema);
-  const response: ActionDataState<LogPlayResult> = {};
+  const response: ActionDataState<PhotoMatchOutcome> = {};
 
   await tryAction(response, async () => {
     const data = await validator.validateAuth(formData);
-    response.data = await matchAndLogPlay(data);
+    response.data = await matchPhotoPlay(data);
   });
-
-  if (response.data) {
-    revalidatePath("/log");
-    revalidatePath("/track");
-  }
 
   return response;
 }

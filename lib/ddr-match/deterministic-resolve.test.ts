@@ -25,6 +25,7 @@ describe("tryDeterministicResolve", () => {
   const candidates: ResolveCandidate[] = [
     {
       song_id: 10,
+      song_db_id: 1,
       title: "PARANOiA",
       artist: "180",
       difficulty: "Difficult",
@@ -32,6 +33,7 @@ describe("tryDeterministicResolve", () => {
     },
     {
       song_id: 11,
+      song_db_id: 1,
       title: "PARANOiA",
       artist: "180",
       difficulty: "Basic",
@@ -39,7 +41,7 @@ describe("tryDeterministicResolve", () => {
     },
   ];
 
-  it("resolves deterministically when one high-confidence title matches one difficulty row", () => {
+  it("resolves deterministically when one song matches with default difficulty", () => {
     const result = tryDeterministicResolve([stage], [derived], [candidates]);
 
     expect(result.resolved).toHaveLength(1);
@@ -47,7 +49,7 @@ describe("tryDeterministicResolve", () => {
     expect(result.ambiguousStages).toHaveLength(0);
   });
 
-  it("defers to AI when multiple difficulty rows match", () => {
+  it("defers to ranking when multiple title hypotheses exist", () => {
     const result = tryDeterministicResolve(
       [
         {

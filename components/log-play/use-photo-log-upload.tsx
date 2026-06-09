@@ -14,6 +14,7 @@ import {
   type MultiUploadItem,
 } from "@/components/log-play/multi-upload-item";
 import { useDictionary } from "@/lib/i18n/dictionary-provider";
+import type { ChartType } from "@/lib/ddr-match/ai-results-schema";
 import type { PreviewPlayRow } from "@/lib/ddr-match/photo-match-outcome";
 import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 
@@ -41,6 +42,7 @@ export function usePhotoLogUpload({
   const [state, setState] = useState<PhotoLogState>(PhotoLogState.CAPTURE);
   const [capture, setCapture] = useState<CapturedImage>();
   const [previewRows, setPreviewRows] = useState<PreviewPlayRow[]>([]);
+  const [previewChartType, setPreviewChartType] = useState<ChartType>("single");
   const [multiCaptures, setMultiCaptures] = useState<MultiUploadItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -61,8 +63,10 @@ export function usePhotoLogUpload({
   const handlePreview = (payload: {
     rows: PreviewPlayRow[];
     overallConfidence: number;
+    chartType: ChartType;
   }) => {
     setPreviewRows(payload.rows);
+    setPreviewChartType(payload.chartType);
     setState(PhotoLogState.MATCH_PREVIEW);
   };
 
@@ -107,7 +111,6 @@ export function usePhotoLogUpload({
       <InstantMatchState
         capture={capture}
         onRetake={handleRetake}
-        onMatch={onMatch}
         onPreview={handlePreview}
       />
     )) || <></>,
@@ -115,6 +118,7 @@ export function usePhotoLogUpload({
       <MatchPreviewState
         capture={capture}
         rows={previewRows}
+        chartType={previewChartType}
         onRetake={handleRetake}
         onMatch={onMatch}
       />

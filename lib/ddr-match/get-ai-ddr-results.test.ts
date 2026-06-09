@@ -3,7 +3,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { resolvePlaysFromCandidates } from "./get-ai-ddr-results";
-import { buildResolvePrompt } from "./prompts/resolve-prompt";
 import {
   buildVisionSystemPrompt,
   buildVisionUserMessageText,
@@ -18,11 +17,6 @@ const promptsDir = join(dirname(fileURLToPath(import.meta.url)), "prompts");
 
 const visionSource = readFileSync(
   join(promptsDir, "vision-prompt.ts"),
-  "utf8",
-);
-
-const resolveSource = readFileSync(
-  join(promptsDir, "resolve-prompt.ts"),
   "utf8",
 );
 
@@ -102,34 +96,62 @@ describe("resolvePlaysFromCandidates", () => {
       ),
     ).rejects.toThrow(visionErrorNoSongCandidatesForStage(3));
   });
-});
 
-describe("resolve prompt", () => {
-  it("buildResolvePrompt uses derived context fields", () => {
-    const prompt = buildResolvePrompt(
-      [
-        {
-          stage: 1,
-          title_candidates: [],
-        },
+  it("resolves ambiguous stages with heuristic ranking", async () => {
+    const stage = makeStageVision({
+      stage: 1,
+      title_candidates: [
+        { title: "PARANOiA", confidence: 0.7, short_reason: "partial" },
+        { title: "PARANOIA", confidence: 0.5, short_reason: "alternate" },
       ],
+      p1: {
+        score: 500000,
+        difficulty_border: [
+          {
+            color: "red",
+            confidence: 0.9,
+            short_reason: "red strip",
+          },
+        ],
+      },
+    });
+
+    const result = await resolvePlaysFromCandidates(
+      [stage],
       [
-        {
+        makeDerivedStageContext({
           stage: 1,
           selected_player: "p1",
-          difficulty_color: "green",
+          score: 500000,
+          difficulty_color: "red",
           difficulty_border_confidence: 0.9,
-          difficulty_border_reason: "strip visible",
-          score: 1_000_000,
-          difficulty_overridden_by_session_majority: false,
-        },
+        }),
       ],
-      [[]],
+      [
+        [
+          {
+            song_id: 10,
+            song_db_id: 1,
+            title: "PARANOiA",
+            artist: "180",
+            difficulty: "Difficult",
+            rating: 10,
+          },
+          {
+            song_id: 11,
+            song_db_id: 1,
+            title: "PARANOiA",
+            artist: "180",
+            difficulty: "Basic",
+            rating: 5,
+          },
+        ],
+      ],
     );
 
-    expect(prompt).toContain("border_reason:");
-    expect(prompt).toContain("strip visible");
-    expect(resolveSource).toContain("derivedContexts");
-    expect(resolveSource).not.toContain("difficulty_color_alternates");
+    expect(result.plays).toHaveLength(1);
+    expect(result.plays[0].song_id).toBe(10);
+    expect(result.rankedSongsByStage[0]).toHaveLength(1);
+    expect(result.rankedSongsByStage[0][0].song_db_id).toBe(1);
   });
 });

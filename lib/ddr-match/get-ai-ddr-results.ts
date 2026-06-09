@@ -4,19 +4,21 @@ import type {
   DdrCapture,
   DerivedStageContext,
   DdrResolvedPlay,
-  DdrResolvedPlays,
   DdrVisionParseResult,
   ResolveCandidate,
   StageVision,
 } from "./ai-results-schema";
 import {
   ddrVisionParseGeminiSchema,
-  ddrResolvedPlaysGeminiSchema,
   normalizeDdrVisionParse,
-  normalizeDdrResolvedPlays,
 } from "./normalize-ai-results";
 import { getGoogleGenerativeAiApiKey } from "./get-google-api-key";
 import { tryDeterministicResolve } from "./deterministic-resolve";
+import {
+  rankSongsByStage,
+  resolveAmbiguousStagesHeuristic,
+  type RankedSong,
+} from "./rank-candidates";
 import {
   VISION_ERROR_TOO_BLURRY,
   visionErrorNoSongCandidatesForStage,
@@ -25,10 +27,8 @@ import {
   buildVisionSystemPrompt,
   buildVisionUserMessageText,
 } from "./prompts/vision-prompt";
-import { buildResolvePrompt } from "./prompts/resolve-prompt";
 
 const VISION_MODEL_ID = "gemini-2.5-flash";
-const RESOLVE_MODEL_ID = "gemini-2.5-flash-lite";
 
 export type VisionOptions = {
   apiKey?: string;
@@ -42,16 +42,15 @@ export type VisionOptions = {
     | "MEDIA_RESOLUTION_HIGH";
 };
 
+export type ResolvePlaysResult = {
+  plays: DdrResolvedPlay[];
+  rankedSongsByStage: RankedSong[][];
+};
+
 async function getVisionModel(apiKey?: string) {
   const resolvedKey = apiKey ?? (await getGoogleGenerativeAiApiKey());
   const google = createGoogleGenerativeAI({ apiKey: resolvedKey });
   return google(VISION_MODEL_ID);
-}
-
-async function getResolveModel() {
-  const apiKey = await getGoogleGenerativeAiApiKey();
-  const google = createGoogleGenerativeAI({ apiKey });
-  return google(RESOLVE_MODEL_ID);
 }
 
 export function throwAiError(
@@ -154,7 +153,7 @@ function assertCandidatesMembership(
   for (const play of plays) {
     const stageIndex = stages.findIndex((stage) => stage.stage === play.stage);
     if (stageIndex === -1) {
-      throwAiError("AI returned a play for an unknown stage", "transient", {
+      throwAiError("Resolved a play for an unknown stage", "transient", {
         expectedStages: expectedStageNumbers,
         returnedStage: play.stage,
         returnedSongId: play.song_id,
@@ -191,62 +190,26 @@ function assertAmbiguousStagesHaveCandidates(
   }
 }
 
-async function resolveAmbiguousStages(
-  stages: StageVision[],
-  derivedContexts: DerivedStageContext[],
-  candidatesByStage: ResolveCandidate[][],
-  hint?: string | null,
-): Promise<DdrResolvedPlay[]> {
-  if (stages.length === 0) {
-    return [];
-  }
-
-  const model = await getResolveModel();
-
-  const { output: raw } = await generateText({
-    model,
-    output: Output.object({
-      schema: ddrResolvedPlaysGeminiSchema,
-    }),
-    prompt: buildResolvePrompt(
-      stages,
-      derivedContexts,
-      candidatesByStage,
-      hint,
-    ),
-  });
-
-  const normalized = normalizeDdrResolvedPlays(raw, stages);
-
-  if (normalized.plays.length !== stages.length) {
-    throwAiError(
-      "AI returned an unexpected number of resolved plays",
-      "transient",
-    );
-  }
-
-  return normalized.plays;
-}
-
 export async function resolvePlaysFromCandidates(
   stages: StageVision[],
   derivedContexts: DerivedStageContext[],
   candidatesByStage: ResolveCandidate[][],
-  options: ResolveOptions = {},
-): Promise<DdrResolvedPlays> {
+  _options: ResolveOptions = {},
+): Promise<ResolvePlaysResult> {
+  const rankedSongsByStage = rankSongsByStage(stages, candidatesByStage);
+
   const { resolved, ambiguousStages, ambiguousDerived, ambiguousCandidates } =
     tryDeterministicResolve(stages, derivedContexts, candidatesByStage);
 
   assertAmbiguousStagesHaveCandidates(ambiguousStages, ambiguousCandidates);
 
-  const aiResolved = await resolveAmbiguousStages(
+  const heuristicResolved = resolveAmbiguousStagesHeuristic(
     ambiguousStages,
     ambiguousDerived,
     ambiguousCandidates,
-    options.hint,
   );
 
-  const plays = [...resolved, ...aiResolved].sort(
+  const plays = [...resolved, ...heuristicResolved].sort(
     (a, b) => (a.stage ?? 0) - (b.stage ?? 0),
   );
 
@@ -256,5 +219,5 @@ export async function resolvePlaysFromCandidates(
 
   assertCandidatesMembership(stages, candidatesByStage, plays);
 
-  return { plays };
+  return { plays, rankedSongsByStage };
 }

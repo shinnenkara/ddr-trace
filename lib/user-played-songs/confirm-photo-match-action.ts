@@ -31,7 +31,11 @@ export async function confirmPhotoMatchAction(
   await tryAction(response, async () => {
     const data = await validator.validateAuth(formData);
     response.data = await confirmPhotoMatchPlays(
-      { user_id: data.user_id, played_at: data.played_at },
+      {
+        user_id: data.user_id,
+        played_at: data.played_at,
+        chart_type: data.chart_type,
+      },
       data.rows,
     );
   });
