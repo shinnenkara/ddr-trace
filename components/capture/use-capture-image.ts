@@ -19,7 +19,7 @@ export type CapturedImage = {
 };
 
 const captureOptions = {
-  maxSizeMB: 1,
+  maxSizeMB: 3,
   maxWidthOrHeight: 2560,
   useWebWorker: true,
   fileType: "image/webp",

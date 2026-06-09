@@ -108,7 +108,25 @@ export type DifficultyVariant = {
   songId: number;
   difficulty: string;
   rating: number;
+  suggested?: boolean;
 };
+
+export async function getVariantsForSong(
+  songDbId: number,
+  chartType: SongVariantWithSong["type"],
+): Promise<SongVariantWithSong[]> {
+  const db = await getDb();
+
+  const rows = await db
+    .select({ variant: songVariants, song: songs })
+    .from(songVariants)
+    .innerJoin(songs, eq(songVariants.songId, songs.id))
+    .where(
+      and(eq(songVariants.songId, songDbId), eq(songVariants.type, chartType)),
+    );
+
+  return rows.map(({ variant, song }) => mapVariantRow(variant, song));
+}
 
 /**
  * For each input variant, find all chart difficulties of the same song

@@ -1,26 +1,12 @@
-import {
-  difficultyColorToLabels,
-  type DifficultyColor,
-} from "./difficulty-colors";
 import type {
   DerivedStageContext,
   DdrResolvedPlay,
   ResolveCandidate,
   StageVision,
 } from "./ai-results-schema";
+import { pickDefaultVariant } from "./pick-default-difficulty";
+import { dedupeCandidatesToSongs } from "./search-term-utils";
 import { HIGH_TITLE_CONFIDENCE } from "./vision-errors";
-
-function matchesDifficultyColor(
-  candidate: ResolveCandidate,
-  color: DifficultyColor | null,
-): boolean {
-  if (!color) {
-    return true;
-  }
-
-  const labels = difficultyColorToLabels(color);
-  return labels.includes(candidate.difficulty);
-}
 
 export type DeterministicResolveResult = {
   resolved: DdrResolvedPlay[];
@@ -61,25 +47,28 @@ export function tryDeterministicResolve(
     }
 
     const topTitle = stage.title_candidates[0];
+    const uniqueSongs = dedupeCandidatesToSongs(candidates);
 
     const canResolveDeterministically =
       topTitle &&
       topTitle.confidence >= HIGH_TITLE_CONFIDENCE &&
       stage.title_candidates.length === 1 &&
-      derived.score !== null;
+      derived.score !== null &&
+      uniqueSongs.length === 1;
 
     if (canResolveDeterministically) {
-      const matching = candidates.filter((candidate) =>
-        matchesDifficultyColor(candidate, derived.difficulty_color),
+      const songVariants = candidates.filter(
+        (candidate) => candidate.song_db_id === uniqueSongs[0].song_db_id,
       );
+      const defaultVariant = pickDefaultVariant(songVariants, derived);
 
-      if (matching.length === 1) {
+      if (defaultVariant) {
         resolved.push({
-          song_id: matching[0].song_id,
+          song_id: defaultVariant.song_id,
           stage: stage.stage,
           arcade_score: derived.score as number,
           match_reason:
-            "Deterministic match: high-confidence title and single DB row for difficulty",
+            "Deterministic match: high-confidence title and single song candidate",
           resolve_confidence: topTitle.confidence,
         });
         continue;

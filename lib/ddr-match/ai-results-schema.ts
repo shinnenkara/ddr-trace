@@ -88,12 +88,23 @@ export const ddrVisionParseSchema = z.discriminatedUnion("status", [
 export type DdrVisionParseResult = z.infer<typeof ddrVisionParseSchema>;
 
 export const resolveCandidateSchema = z.object({
+  /** song_variants.id — the variant row used when logging a play */
   song_id: z.number().int().positive(),
+  /** songs.id — parent song for deduplication */
+  song_db_id: z.number().int().positive(),
   title: z.string(),
   artist: z.string(),
   difficulty: z.string(),
   rating: z.number().int(),
 });
+
+export const songCandidateSchema = z.object({
+  song_db_id: z.number().int().positive(),
+  title: z.string(),
+  artist: z.string(),
+});
+
+export type SongCandidate = z.infer<typeof songCandidateSchema>;
 
 export type ResolveCandidate = z.infer<typeof resolveCandidateSchema>;
 

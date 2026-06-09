@@ -1,4 +1,8 @@
-import type { StageVision, ResolveCandidate } from "./ai-results-schema";
+import type {
+  SongCandidate,
+  StageVision,
+  ResolveCandidate,
+} from "./ai-results-schema";
 import type { SongVariantWithSong } from "@/lib/db/schema";
 
 const MIN_SEARCH_TERM_LENGTH = 2;
@@ -61,11 +65,33 @@ export function collectAllSearchTerms(stages: StageVision[]): string[] {
 export function toResolveCandidate(variant: SongVariantWithSong): ResolveCandidate {
   return {
     song_id: variant.id,
+    song_db_id: variant.songId,
     title: variant.song.title,
     artist: variant.song.artist,
     difficulty: variant.difficulty,
     rating: variant.rating,
   };
+}
+
+export function dedupeCandidatesToSongs(
+  candidates: ResolveCandidate[],
+): SongCandidate[] {
+  const seen = new Set<number>();
+  const songs: SongCandidate[] = [];
+
+  for (const candidate of candidates) {
+    if (seen.has(candidate.song_db_id)) {
+      continue;
+    }
+    seen.add(candidate.song_db_id);
+    songs.push({
+      song_db_id: candidate.song_db_id,
+      title: candidate.title,
+      artist: candidate.artist,
+    });
+  }
+
+  return songs;
 }
 
 export function variantMatchesSearchTerm(
