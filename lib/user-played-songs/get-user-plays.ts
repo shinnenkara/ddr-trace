@@ -1,10 +1,10 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { songs, userPlayedSongs } from "@/lib/db/schema";
+import { songs, songVariants, userPlayedSongs } from "@/lib/db/schema";
 import type {
   GetUserPlaysOptions,
   GetUserPlaysResult,
-  PlayWithSong,
+  PlayWithVariant,
 } from "./play-with-song";
 
 const DEFAULT_LIMIT = 50;
@@ -23,10 +23,15 @@ export async function getUserPlays(
     db
       .select({
         play: userPlayedSongs,
+        variant: songVariants,
         song: songs,
       })
       .from(userPlayedSongs)
-      .innerJoin(songs, eq(userPlayedSongs.songId, songs.id))
+      .innerJoin(
+        songVariants,
+        eq(userPlayedSongs.songVariantId, songVariants.id),
+      )
+      .innerJoin(songs, eq(songVariants.songId, songs.id))
       .where(where)
       .orderBy(desc(userPlayedSongs.playedAt))
       .limit(limit)
@@ -34,9 +39,9 @@ export async function getUserPlays(
     db.select({ total: count() }).from(userPlayedSongs).where(where),
   ]);
 
-  const plays: PlayWithSong[] = rows.map(({ play, song }) => ({
+  const plays: PlayWithVariant[] = rows.map(({ play, variant, song }) => ({
     ...play,
-    song,
+    variant: { ...variant, song },
   }));
 
   return {

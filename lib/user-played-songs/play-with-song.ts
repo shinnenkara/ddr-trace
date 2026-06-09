@@ -1,8 +1,11 @@
-import type { Song, UserPlayedSong } from "@/lib/db/schema";
+import type { SongVariantWithSong, UserPlayedSong } from "@/lib/db/schema";
 
-export type PlayWithSong = UserPlayedSong & {
-  song: Song;
+export type PlayWithVariant = UserPlayedSong & {
+  variant: SongVariantWithSong;
 };
+
+/** @deprecated Use PlayWithVariant */
+export type PlayWithSong = PlayWithVariant;
 
 export type GetUserPlaysOptions = {
   limit?: number;
@@ -10,6 +13,6 @@ export type GetUserPlaysOptions = {
 };
 
 export type GetUserPlaysResult = {
-  plays: PlayWithSong[];
+  plays: PlayWithVariant[];
   total: number;
 };

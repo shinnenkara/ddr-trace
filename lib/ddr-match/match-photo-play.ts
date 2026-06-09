@@ -19,7 +19,7 @@ import {
   stageHasExtractableSignal,
 } from "./normalize-ai-results";
 import {
-  getSongsByIds,
+  getVariantsByIds,
   getDifficultyVariantsForSongs,
 } from "@/lib/user-played-songs/search-songs-for-match";
 import { insertPlayedSongs } from "@/lib/user-played-songs/insert-played-songs";
@@ -92,12 +92,12 @@ async function insertResolvedPlays(
   capture: DdrCapture,
   resolved: DdrResolvedPlays,
 ): Promise<LogPlayResult> {
-  const songIds = resolved.plays.map((play) => play.song_id);
-  const songs = await getSongsByIds(songIds);
-  const songIdSet = new Set(songs.map((song) => song.id));
+  const variantIds = resolved.plays.map((play) => play.song_id);
+  const variants = await getVariantsByIds(variantIds);
+  const variantIdSet = new Set(variants.map((variant) => variant.id));
 
   for (const play of resolved.plays) {
-    if (!songIdSet.has(play.song_id)) {
+    if (!variantIdSet.has(play.song_id)) {
       throw new Error(
         `Matched song id ${play.song_id} was not found in database`,
       );
@@ -109,7 +109,7 @@ async function insertResolvedPlays(
   const plays = await insertPlayedSongs(
     resolved.plays.map((play) => ({
       userId: capture.user_id,
-      songId: play.song_id,
+      songVariantId: play.song_id,
       arcadeScore: play.arcade_score,
       stage: play.stage ?? null,
       batchId,
@@ -125,31 +125,35 @@ async function buildPreviewRows(
   stages: StageVision[],
   resolved: DdrResolvedPlays,
 ): Promise<PreviewPlayRow[]> {
-  const songIds = resolved.plays.map((play) => play.song_id);
-  const songs = await getSongsByIds(songIds);
-  const songById = new Map(songs.map((song) => [song.id, song]));
-  const variantsBySongId = await getDifficultyVariantsForSongs(songs);
+  const variantIds = resolved.plays.map((play) => play.song_id);
+  const variants = await getVariantsByIds(variantIds);
+  const variantById = new Map(variants.map((variant) => [variant.id, variant]));
+  const variantsByVariantId = await getDifficultyVariantsForSongs(variants);
 
   const rows: PreviewPlayRow[] = [];
 
   for (const play of resolved.plays) {
-    const song = songById.get(play.song_id);
+    const variant = variantById.get(play.song_id);
     const stageVision = stages.find((stage) => stage.stage === play.stage);
 
-    if (!song || play.stage == null) {
+    if (!variant || play.stage == null) {
       continue;
     }
 
-    const difficultyOptions = variantsBySongId.get(song.id) ?? [
-      { songId: song.id, difficulty: song.difficulty, rating: song.rating },
+    const difficultyOptions = variantsByVariantId.get(variant.id) ?? [
+      {
+        songId: variant.id,
+        difficulty: variant.difficulty,
+        rating: variant.rating,
+      },
     ];
 
     const row: PreviewPlayRow = {
       stage: play.stage as 1 | 2 | 3,
       songId: play.song_id,
-      title: song.title,
-      artist: song.artist,
-      difficulty: song.difficulty,
+      title: variant.song.title,
+      artist: variant.song.artist,
+      difficulty: variant.difficulty,
       arcadeScore: play.arcade_score,
       resolveConfidence: play.resolve_confidence,
       difficultyOptions,
@@ -271,16 +275,16 @@ export async function confirmPhotoMatchPlays(
   capture: Pick<DdrCapture, "user_id" | "played_at">,
   rows: PreviewPlayRow[],
 ): Promise<LogPlayResult> {
-  const songIds = rows.map((row) => row.songId);
-  const songs = await getSongsByIds(songIds);
-  const songById = new Map(songs.map((song) => [song.id, song]));
+  const variantIds = rows.map((row) => row.songId);
+  const variants = await getVariantsByIds(variantIds);
+  const variantById = new Map(variants.map((variant) => [variant.id, variant]));
 
   for (const row of rows) {
-    const song = songById.get(row.songId);
-    if (!song) {
+    const variant = variantById.get(row.songId);
+    if (!variant) {
       throw new Error(`Song id ${row.songId} was not found in database`);
     }
-    if (song.difficulty !== row.difficulty) {
+    if (variant.difficulty !== row.difficulty) {
       throw new Error(
         `Difficulty "${row.difficulty}" does not match song id ${row.songId}`,
       );
@@ -292,7 +296,7 @@ export async function confirmPhotoMatchPlays(
   const plays = await insertPlayedSongs(
     rows.map((row) => ({
       userId: capture.user_id,
-      songId: row.songId,
+      songVariantId: row.songId,
       arcadeScore: row.arcadeScore,
       stage: row.stage,
       batchId,

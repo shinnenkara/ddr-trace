@@ -1,5 +1,5 @@
 import type { StageVision, ResolveCandidate } from "./ai-results-schema";
-import type { Song } from "@/lib/db/schema";
+import type { SongVariantWithSong } from "@/lib/db/schema";
 
 const MIN_SEARCH_TERM_LENGTH = 2;
 const LONGEST_TOKEN_MIN_LENGTH = 3;
@@ -57,27 +57,31 @@ export function collectAllSearchTerms(stages: StageVision[]): string[] {
   return [...terms];
 }
 
-export function toResolveCandidate(song: Song): ResolveCandidate {
+/** Maps a variant row to a resolve candidate; song_id is the variant id. */
+export function toResolveCandidate(variant: SongVariantWithSong): ResolveCandidate {
   return {
-    song_id: song.id,
-    title: song.title,
-    artist: song.artist,
-    difficulty: song.difficulty,
-    rating: song.rating,
+    song_id: variant.id,
+    title: variant.song.title,
+    artist: variant.song.artist,
+    difficulty: variant.difficulty,
+    rating: variant.rating,
   };
 }
 
-export function songMatchesSearchTerm(song: Song, term: string): boolean {
+export function variantMatchesSearchTerm(
+  variant: SongVariantWithSong,
+  term: string,
+): boolean {
   const needle = term.toLowerCase();
   return (
-    song.title.toLowerCase().includes(needle) ||
-    song.artist.toLowerCase().includes(needle)
+    variant.song.title.toLowerCase().includes(needle) ||
+    variant.song.artist.toLowerCase().includes(needle)
   );
 }
 
 export function groupCandidatesByStage(
   stages: StageVision[],
-  songs: Song[],
+  variants: SongVariantWithSong[],
 ): ResolveCandidate[][] {
   return stages.map((stage) => {
     const terms = collectSearchTermsForStage(stage);
@@ -88,14 +92,14 @@ export function groupCandidatesByStage(
     const seen = new Set<number>();
     const candidates: ResolveCandidate[] = [];
 
-    for (const song of songs) {
-      if (seen.has(song.id)) {
+    for (const variant of variants) {
+      if (seen.has(variant.id)) {
         continue;
       }
 
-      if (terms.some((term) => songMatchesSearchTerm(song, term))) {
-        seen.add(song.id);
-        candidates.push(toResolveCandidate(song));
+      if (terms.some((term) => variantMatchesSearchTerm(variant, term))) {
+        seen.add(variant.id);
+        candidates.push(toResolveCandidate(variant));
       }
     }
 

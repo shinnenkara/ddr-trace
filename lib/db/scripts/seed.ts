@@ -1,13 +1,11 @@
 /**
- * Generate a SQL seed file for the `songs` table from the two DDR CSV exports.
+ * Generate a SQL seed file for `songs` + `song_variants` from the two DDR CSV exports.
  *
- * It maps CSV headers to columns using the same normalization as the schema
- * (lowercase, brackets removed, symbols -> underscore, trimmed), keeps only the
- * columns currently defined in db/schema.ts, and writes batched multi-row
- * INSERTs to db/seed.sql.
+ * Song-level rows are deduplicated by (title, artist). Each CSV row becomes a
+ * song_variants row linked to its parent song.
  *
- * Run:    npx tsx db/seed.ts
- * Apply:  npx wrangler d1 execute ddr-trace-db --local --file=db/seed.sql
+ * Run:    npx tsx lib/db/scripts/seed.ts
+ * Apply:  npx wrangler d1 execute ddr-trace-db --local --file=lib/db/temp/seed.sql
  *         (swap --local for --remote to seed the remote D1)
  */
 import { createReadStream, writeFileSync } from "node:fs";
@@ -15,8 +13,8 @@ import { createInterface } from "node:readline";
 import path from "node:path";
 import { parseCsvLine, toColumnName } from "./csv-utils";
 
-const DATA_DIR = path.join(__dirname, "temp");
-const OUT_FILE = path.join(__dirname, "temp/seed.sql");
+const DATA_DIR = path.join(__dirname, "../temp");
+const OUT_FILE = path.join(__dirname, "../temp/seed.sql");
 const ROWS_PER_INSERT = 500;
 
 const FILES: { file: string; type: "single" | "double" }[] = [
@@ -32,18 +30,19 @@ const FILES: { file: string; type: "single" | "double" }[] = [
 
 type Kind = "text" | "integer";
 
-// Target columns (excluding id + type), in insert order. `col` is the DB column
-// name AND the normalized form of the CSV header used to locate the source value.
-const COLUMNS: { col: string; kind: Kind }[] = [
+const SONG_COLUMNS: { col: string; kind: Kind }[] = [
   { col: "folder", kind: "text" },
   { col: "title", kind: "text" },
-  { col: "difficulty", kind: "text" },
-  { col: "rating", kind: "integer" },
+  { col: "artist", kind: "text" },
   { col: "song_length", kind: "integer" },
   { col: "display_bpm_min", kind: "integer" },
   { col: "display_bpm_max", kind: "integer" },
   { col: "bpm_changes", kind: "integer" },
-  { col: "artist", kind: "text" },
+];
+
+const VARIANT_COLUMNS: { col: string; kind: Kind }[] = [
+  { col: "difficulty", kind: "text" },
+  { col: "rating", kind: "integer" },
   { col: "notes", kind: "integer" },
   { col: "steps", kind: "integer" },
   { col: "jumps", kind: "integer" },
@@ -51,6 +50,13 @@ const COLUMNS: { col: string; kind: Kind }[] = [
   { col: "shock_arrows", kind: "integer" },
   { col: "max_combo_steps_shock_arrows", kind: "integer" },
 ];
+
+const ALL_COLUMNS = [...SONG_COLUMNS, ...VARIANT_COLUMNS];
+
+type ParsedRow = {
+  type: "single" | "double";
+  values: Record<string, string | null>;
+};
 
 function sqlText(v: string): string {
   return "'" + v.replace(/'/g, "''") + "'";
@@ -63,56 +69,56 @@ function sqlInt(v: string): string {
   return Number.isFinite(n) ? String(Math.round(n)) : "NULL";
 }
 
-/** Build "(...)" value tuples for one CSV file. */
-async function rowsForFile(
-  file: string,
-  type: "single" | "double",
-): Promise<{ tuples: string[]; skipped: number }> {
-  const rl = createInterface({
-    input: createReadStream(path.join(DATA_DIR, file)),
-    crlfDelay: Infinity,
-  });
+function songKey(title: string, artist: string): string {
+  return `${title}\0${artist}`;
+}
 
-  const colIndex: Record<string, number> = {};
-  const tuples: string[] = [];
-  let skipped = 0;
-  let isHeader = true;
+/** Read all valid CSV rows from both files. */
+async function readAllRows(): Promise<ParsedRow[]> {
+  const rows: ParsedRow[] = [];
 
-  for await (const line of rl) {
-    const cells = parseCsvLine(line);
-    if (isHeader) {
-      cells.forEach((h, i) => (colIndex[toColumnName(h)] = i));
-      const missing = COLUMNS.filter((c) => !(c.col in colIndex)).map(
-        (c) => c.col,
-      );
-      if (missing.length) {
-        throw new Error(
-          `${file}: missing expected columns: ${missing.join(", ")}`,
+  for (const { file, type } of FILES) {
+    const rl = createInterface({
+      input: createReadStream(path.join(DATA_DIR, file)),
+      crlfDelay: Infinity,
+    });
+
+    const colIndex: Record<string, number> = {};
+    let isHeader = true;
+
+    for await (const line of rl) {
+      const cells = parseCsvLine(line);
+      if (isHeader) {
+        cells.forEach((h, i) => (colIndex[toColumnName(h)] = i));
+        const missing = ALL_COLUMNS.filter((c) => !(c.col in colIndex)).map(
+          (c) => c.col,
         );
+        if (missing.length) {
+          throw new Error(
+            `${file}: missing expected columns: ${missing.join(", ")}`,
+          );
+        }
+        isHeader = false;
+        continue;
       }
-      isHeader = false;
-      continue;
-    }
-    if (cells.length <= 1 && (cells[0] ?? "").trim() === "") continue; // blank line
+      if (cells.length <= 1 && (cells[0] ?? "").trim() === "") continue;
 
-    const values = [sqlText(type)];
-    let hasNull = false;
-    for (const c of COLUMNS) {
-      const raw = cells[colIndex[c.col]] ?? "";
-      const v = c.kind === "integer" ? sqlInt(raw) : sqlText(raw);
-      if (v === "NULL") hasNull = true; // would violate a NOT NULL column
-      values.push(v);
+      const values: Record<string, string | null> = {};
+      let hasNull = false;
+      for (const c of ALL_COLUMNS) {
+        const raw = cells[colIndex[c.col]] ?? "";
+        const v = c.kind === "integer" ? sqlInt(raw) : sqlText(raw);
+        if (v === "NULL") hasNull = true;
+        values[c.col] = v;
+      }
+      if (hasNull) continue;
+
+      rows.push({ type, values });
     }
-    // Every target column is NOT NULL; skip rows with missing required temp
-    // (e.g. "unused" charts that have no rating).
-    if (hasNull) {
-      skipped++;
-      continue;
-    }
-    tuples.push(`(${values.join(",")})`);
+    rl.close();
   }
-  rl.close();
-  return { tuples, skipped };
+
+  return rows;
 }
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -122,33 +128,93 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 async function main() {
-  const columnList = ["type", ...COLUMNS.map((c) => c.col)].join(", ");
+  const parsedRows = await readAllRows();
+
+  const songIdByKey = new Map<string, number>();
+  const songTuples: string[] = [];
+  const variantTuples: string[] = [];
+  let nextSongId = 1;
+  let skippedConflicts = 0;
+
+  const songMetaByKey = new Map<
+    string,
+    Record<string, string | null>
+  >();
+
+  for (const row of parsedRows) {
+    const title = row.values.title!;
+    const artist = row.values.artist!;
+    const key = songKey(title, artist);
+
+    const songMeta: Record<string, string | null> = {};
+    for (const c of SONG_COLUMNS) {
+      songMeta[c.col] = row.values[c.col] ?? null;
+    }
+
+    const existing = songMetaByKey.get(key);
+    if (existing) {
+      let hasConflict = false;
+      for (const c of SONG_COLUMNS) {
+        if (existing[c.col] !== songMeta[c.col]) {
+          skippedConflicts++;
+          console.warn(
+            `Conflict for "${title}" / "${artist}": ${c.col} differs (${existing[c.col]} vs ${songMeta[c.col]}), skipping variant`,
+          );
+          hasConflict = true;
+          break;
+        }
+      }
+      if (hasConflict) continue;
+    } else {
+      songMetaByKey.set(key, songMeta);
+      songIdByKey.set(key, nextSongId);
+      const songValues = SONG_COLUMNS.map((c) => songMeta[c.col]);
+      songTuples.push(`(${nextSongId},${songValues.join(",")})`);
+      nextSongId++;
+    }
+
+    const songId = songIdByKey.get(key);
+    if (!songId) continue;
+
+    const variantValues = [
+      songId,
+      sqlText(row.type),
+      ...VARIANT_COLUMNS.map((c) => row.values[c.col]),
+    ];
+    variantTuples.push(`(${variantValues.join(",")})`);
+  }
+
+  const songColumnList = SONG_COLUMNS.map((c) => c.col).join(", ");
+  const variantColumnList = [
+    "song_id",
+    "type",
+    ...VARIANT_COLUMNS.map((c) => c.col),
+  ].join(", ");
+
   const out: string[] = [
-    "-- Auto-generated by db/seed.ts. Do not edit by hand.",
+    "-- Auto-generated by lib/db/scripts/seed.ts. Do not edit by hand.",
     "PRAGMA foreign_keys=OFF;",
+    "DELETE FROM song_variants;",
     "DELETE FROM songs;",
     "",
+    `-- songs: ${songTuples.length} rows`,
   ];
 
-  let total = 0;
-  let totalSkipped = 0;
-  for (const { file, type } of FILES) {
-    const { tuples, skipped } = await rowsForFile(file, type);
-    total += tuples.length;
-    totalSkipped += skipped;
-    out.push(
-      `-- ${type}: ${tuples.length} rows (${skipped} skipped, missing required data)`,
-    );
-    for (const batch of chunk(tuples, ROWS_PER_INSERT)) {
-      out.push(`INSERT INTO songs (${columnList}) VALUES`);
-      out.push(batch.join(",\n") + ";");
-    }
-    out.push("");
+  for (const batch of chunk(songTuples, ROWS_PER_INSERT)) {
+    out.push(`INSERT INTO songs (id, ${songColumnList}) VALUES`);
+    out.push(batch.join(",\n") + ";");
+  }
+
+  out.push("");
+  out.push(`-- song_variants: ${variantTuples.length} rows`);
+  for (const batch of chunk(variantTuples, ROWS_PER_INSERT)) {
+    out.push(`INSERT INTO song_variants (${variantColumnList}) VALUES`);
+    out.push(batch.join(",\n") + ";");
   }
 
   writeFileSync(OUT_FILE, out.join("\n"));
   console.log(
-    `Wrote ${total} rows to ${path.relative(process.cwd(), OUT_FILE)} (${totalSkipped} skipped, missing required data)`,
+    `Wrote ${songTuples.length} songs and ${variantTuples.length} variants to ${path.relative(process.cwd(), OUT_FILE)} (${skippedConflicts} metadata conflicts skipped)`,
   );
 }
 

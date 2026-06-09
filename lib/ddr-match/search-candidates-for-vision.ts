@@ -1,6 +1,6 @@
 import { or, like, eq, and } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { songs } from "@/lib/db/schema";
+import { songs, songVariants } from "@/lib/db/schema";
 import type {
   ChartType,
   ResolveCandidate,
@@ -16,7 +16,7 @@ export {
   collectAllSearchTerms,
   groupCandidatesByStage,
   longestSearchToken,
-  songMatchesSearchTerm,
+  variantMatchesSearchTerm,
   toResolveCandidate,
 } from "./search-term-utils";
 
@@ -25,7 +25,7 @@ const BULK_SEARCH_LIMIT = 100;
 export async function searchSongsByTerms(
   terms: string[],
   chartType: ChartType,
-): Promise<(typeof songs.$inferSelect)[]> {
+) {
   if (terms.length === 0) {
     return [];
   }
@@ -36,11 +36,14 @@ export async function searchSongsByTerms(
     like(songs.artist, `%${term}%`),
   ]);
 
-  return db
-    .select()
-    .from(songs)
-    .where(and(eq(songs.type, chartType), or(...patterns)))
+  const rows = await db
+    .select({ variant: songVariants, song: songs })
+    .from(songVariants)
+    .innerJoin(songs, eq(songVariants.songId, songs.id))
+    .where(and(eq(songVariants.type, chartType), or(...patterns)))
     .limit(BULK_SEARCH_LIMIT);
+
+  return rows.map(({ variant, song }) => ({ ...variant, song }));
 }
 
 export async function searchCandidatesForVision(
@@ -48,6 +51,6 @@ export async function searchCandidatesForVision(
   chartType: ChartType,
 ): Promise<ResolveCandidate[][]> {
   const terms = collectAllSearchTerms(stages);
-  const matchedSongs = await searchSongsByTerms(terms, chartType);
-  return groupCandidatesByStage(stages, matchedSongs);
+  const matchedVariants = await searchSongsByTerms(terms, chartType);
+  return groupCandidatesByStage(stages, matchedVariants);
 }

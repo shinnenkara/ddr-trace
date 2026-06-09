@@ -4,7 +4,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { Song } from "../../lib/db/schema";
 import type { SortColumn } from "../../lib/db/queries";
 import type { Dictionary } from "@/lib/i18n/dictionary-provider";
-import { formatDifficulty, formatSongType } from "@/lib/i18n/song-labels";
 
 /** Extra per-column config we attach via TanStack's `meta` field. */
 export type SongColumnMeta = {
@@ -42,29 +41,11 @@ export function getSongColumns(dict: Dictionary): ColumnDef<Song>[] {
       meta: { sortKey: "artist" } satisfies SongColumnMeta,
     },
     {
-      accessorKey: "type",
-      header: dict.songs.columns.type,
-      meta: { sortKey: "type" } satisfies SongColumnMeta,
+      accessorKey: "folder",
+      header: dict.songs.columns.folder,
+      meta: { sortKey: "folder" } satisfies SongColumnMeta,
       cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {formatSongType(row.original.type, dict)}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "difficulty",
-      header: dict.songs.columns.difficulty,
-      meta: { sortKey: "difficulty" } satisfies SongColumnMeta,
-      cell: ({ row }) => (
-        <span>{formatDifficulty(row.original.difficulty, dict)}</span>
-      ),
-    },
-    {
-      accessorKey: "rating",
-      header: dict.songs.columns.rating,
-      meta: { sortKey: "rating", numeric: true } satisfies SongColumnMeta,
-      cell: ({ row }) => (
-        <span className="tabular-nums">{row.original.rating}</span>
+        <span className="text-muted-foreground">{row.original.folder}</span>
       ),
     },
     {

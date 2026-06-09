@@ -21,9 +21,10 @@ export function EditPlayForm({ play }: Props) {
       <div className="grid gap-2">
         <Label>{dict.track.edit.chart}</Label>
         <p className="text-sm text-muted-foreground">
-          {play.song.title} — {play.song.artist} ·{" "}
-          {formatSongType(play.song.type, dict)} ·{" "}
-          {formatDifficulty(play.song.difficulty, dict)} · ★{play.song.rating}
+          {play.variant.song.title} — {play.variant.song.artist} ·{" "}
+          {formatSongType(play.variant.type, dict)} ·{" "}
+          {formatDifficulty(play.variant.difficulty, dict)} · ★
+          {play.variant.rating}
         </p>
       </div>
 

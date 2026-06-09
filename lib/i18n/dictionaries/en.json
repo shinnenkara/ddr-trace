@@ -15,6 +15,7 @@
     "columns": {
       "title": "Title",
       "artist": "Artist",
+      "folder": "Folder",
       "type": "Type",
       "difficulty": "Difficulty",
       "rating": "Rating",

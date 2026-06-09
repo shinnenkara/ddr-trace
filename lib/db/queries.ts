@@ -6,9 +6,7 @@ import { songs, type Song } from "./schema";
 export const SORTABLE_COLUMNS = [
   "title",
   "artist",
-  "type",
-  "difficulty",
-  "rating",
+  "folder",
   "song_length",
   "display_bpm_min",
 ] as const;
@@ -74,9 +72,6 @@ export async function getSongsPage(query: SongsQuery): Promise<SongsPage> {
   const sortColumn = songs[sort];
   const orderBy = order === "desc" ? desc(sortColumn) : asc(sortColumn);
 
-  // Case-insensitive partial match on title or artist.
-  // SQLite's LIKE is already case-insensitive for ASCII (ILIKE is Postgres-only
-  // and unsupported on D1).
   const where = q
     ? or(like(songs.title, `%${q}%`), like(songs.artist, `%${q}%`))
     : undefined;

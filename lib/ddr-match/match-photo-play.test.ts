@@ -5,7 +5,7 @@ import {
   makePlayerStats,
   makeStageVision,
 } from "./test-helpers";
-import type { Song } from "@/lib/db/schema";
+import type { SongVariantWithSong } from "@/lib/db/schema";
 import type { UserPlayedSong } from "@/lib/user-played-songs/user-played-song";
 
 vi.mock("./get-ai-ddr-results", () => ({
@@ -21,7 +21,7 @@ vi.mock("./search-candidates-for-vision", () => ({
 }));
 
 vi.mock("@/lib/user-played-songs/search-songs-for-match", () => ({
-  getSongsByIds: vi.fn(),
+  getVariantsByIds: vi.fn(),
   getDifficultyVariantsForSongs: vi.fn(),
 }));
 
@@ -43,7 +43,7 @@ import {
 } from "./get-ai-ddr-results";
 import { searchCandidatesForVision } from "./search-candidates-for-vision";
 import {
-  getSongsByIds,
+  getVariantsByIds,
   getDifficultyVariantsForSongs,
 } from "@/lib/user-played-songs/search-songs-for-match";
 import { insertPlayedSongs } from "@/lib/user-played-songs/insert-played-songs";
@@ -59,18 +59,34 @@ const capture: DdrCapture = {
   played_at: new Date("2026-06-07T12:00:00.000Z"),
 };
 
-const mockSong = {
+const mockVariant = {
   id: 42,
-  title: "Test Song",
-  artist: "Artist",
+  songId: 1,
+  type: "single",
   difficulty: "Difficult",
   rating: 9,
-} as Song;
+  notes: 0,
+  steps: 0,
+  jumps: 0,
+  holds: 0,
+  shock_arrows: 0,
+  max_combo_steps_shock_arrows: 0,
+  song: {
+    id: 1,
+    folder: "folder",
+    title: "Test Song",
+    artist: "Artist",
+    song_length: 120,
+    display_bpm_min: 140,
+    display_bpm_max: 140,
+    bpm_changes: 0,
+  },
+} as SongVariantWithSong;
 
 const mockPlay = {
   id: 1,
   userId: capture.user_id,
-  songId: 42,
+  songVariantId: 42,
   arcadeScore: 837760,
   stage: 1,
   batchId: "batch-1",
@@ -131,7 +147,7 @@ describe("matchPhotoPlay", () => {
         },
       ],
     });
-    vi.mocked(getSongsByIds).mockResolvedValue([mockSong]);
+    vi.mocked(getVariantsByIds).mockResolvedValue([mockVariant]);
 
     const outcome = await matchPhotoPlay(capture);
 
@@ -167,7 +183,7 @@ describe("matchPhotoPlay", () => {
         },
       ],
     });
-    vi.mocked(getSongsByIds).mockResolvedValue([mockSong]);
+    vi.mocked(getVariantsByIds).mockResolvedValue([mockVariant]);
 
     const outcome = await matchPhotoPlay(capture);
 
@@ -192,7 +208,7 @@ describe("matchPhotoPlay", () => {
         },
       ],
     });
-    vi.mocked(getSongsByIds).mockResolvedValue([mockSong]);
+    vi.mocked(getVariantsByIds).mockResolvedValue([mockVariant]);
     vi.mocked(insertPlayedSongs).mockResolvedValue([mockPlay]);
 
     const outcome = await matchPhotoPlay(capture, { forceAutoLog: true });
@@ -208,7 +224,7 @@ describe("confirmPhotoMatchPlays", () => {
   });
 
   it("validates song ids and inserts confirmed rows", async () => {
-    vi.mocked(getSongsByIds).mockResolvedValue([mockSong]);
+    vi.mocked(getVariantsByIds).mockResolvedValue([mockVariant]);
     vi.mocked(insertPlayedSongs).mockResolvedValue([mockPlay]);
 
     const result = await confirmPhotoMatchPlays(
@@ -234,7 +250,7 @@ describe("confirmPhotoMatchPlays", () => {
   });
 
   it("throws when a confirmed song id is missing from the database", async () => {
-    vi.mocked(getSongsByIds).mockResolvedValue([]);
+    vi.mocked(getVariantsByIds).mockResolvedValue([]);
 
     await expect(
       confirmPhotoMatchPlays(

@@ -1,15 +1,26 @@
-import { or, like, eq, and } from "drizzle-orm";
+import { or, like, eq, and, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { songs, type Song } from "@/lib/db/schema";
+import {
+  songs,
+  songVariants,
+  type SongVariantWithSong,
+} from "@/lib/db/schema";
 import {
   difficultyColorToLabels,
   type DifficultyColor,
 } from "@/lib/ddr-match/difficulty-colors";
 
+function mapVariantRow(
+  variant: typeof songVariants.$inferSelect,
+  song: typeof songs.$inferSelect,
+): SongVariantWithSong {
+  return { ...variant, song };
+}
+
 export async function searchSongsForMatch(
   title: string,
   difficultyColor?: DifficultyColor,
-): Promise<Song[]> {
+): Promise<SongVariantWithSong[]> {
   const db = await getDb();
   const trimmed = title.trim();
 
@@ -30,54 +41,67 @@ export async function searchSongsForMatch(
     difficultyLabels && difficultyLabels.length > 0
       ? and(
           titleMatch,
-          or(...difficultyLabels.map((label) => eq(songs.difficulty, label))),
+          or(
+            ...difficultyLabels.map((label) =>
+              eq(songVariants.difficulty, label),
+            ),
+          ),
         )
       : titleMatch;
 
-  return db.select().from(songs).where(where).limit(25);
+  const rows = await db
+    .select({ variant: songVariants, song: songs })
+    .from(songVariants)
+    .innerJoin(songs, eq(songVariants.songId, songs.id))
+    .where(where)
+    .limit(25);
+
+  return rows.map(({ variant, song }) => mapVariantRow(variant, song));
 }
 
 export async function searchSongsByQuery(
   query: string,
   limit = 20,
-): Promise<Song[]> {
+): Promise<SongVariantWithSong[]> {
   const db = await getDb();
   const trimmed = query.trim();
 
-  if (!trimmed) {
-    return db.select().from(songs).limit(limit);
-  }
+  const base = db
+    .select({ variant: songVariants, song: songs })
+    .from(songVariants)
+    .innerJoin(songs, eq(songVariants.songId, songs.id));
 
-  return db
-    .select()
-    .from(songs)
-    .where(
-      or(like(songs.title, `%${trimmed}%`), like(songs.artist, `%${trimmed}%`)),
-    )
-    .limit(limit);
+  const rows = trimmed
+    ? await base
+        .where(
+          or(
+            like(songs.title, `%${trimmed}%`),
+            like(songs.artist, `%${trimmed}%`),
+          ),
+        )
+        .limit(limit)
+    : await base.limit(limit);
+
+  return rows.map(({ variant, song }) => mapVariantRow(variant, song));
 }
 
-export async function getSongsByIds(ids: number[]): Promise<Song[]> {
+export async function getVariantsByIds(
+  ids: number[],
+): Promise<SongVariantWithSong[]> {
   if (ids.length === 0) {
     return [];
   }
 
   const db = await getDb();
   const uniqueIds = [...new Set(ids)];
-  const results: Song[] = [];
 
-  for (const id of uniqueIds) {
-    const [row] = await db
-      .select()
-      .from(songs)
-      .where(eq(songs.id, id))
-      .limit(1);
-    if (row) {
-      results.push(row);
-    }
-  }
+  const rows = await db
+    .select({ variant: songVariants, song: songs })
+    .from(songVariants)
+    .innerJoin(songs, eq(songVariants.songId, songs.id))
+    .where(inArray(songVariants.id, uniqueIds));
 
-  return results;
+  return rows.map(({ variant, song }) => mapVariantRow(variant, song));
 }
 
 export type DifficultyVariant = {
@@ -87,44 +111,44 @@ export type DifficultyVariant = {
 };
 
 /**
- * For each input song, find all chart difficulties of the same chart
- * (matched by title + artist + type) so the user can switch difficulty
- * during review. Keyed by the input song id.
+ * For each input variant, find all chart difficulties of the same song
+ * (matched by song_id) so the user can switch difficulty during review.
+ * Keyed by the input variant id.
  */
 export async function getDifficultyVariantsForSongs(
-  inputSongs: Song[],
+  inputVariants: SongVariantWithSong[],
 ): Promise<Map<number, DifficultyVariant[]>> {
-  const variantsBySongId = new Map<number, DifficultyVariant[]>();
+  const variantsByVariantId = new Map<number, DifficultyVariant[]>();
 
-  if (inputSongs.length === 0) {
-    return variantsBySongId;
+  if (inputVariants.length === 0) {
+    return variantsByVariantId;
   }
 
   const db = await getDb();
+  const songIds = [...new Set(inputVariants.map((v) => v.songId))];
 
-  for (const song of inputSongs) {
-    const rows = await db
-      .select()
-      .from(songs)
-      .where(
-        and(
-          eq(songs.title, song.title),
-          eq(songs.artist, song.artist),
-          eq(songs.type, song.type),
-        ),
-      );
+  const rows = await db
+    .select()
+    .from(songVariants)
+    .where(inArray(songVariants.songId, songIds));
 
-    variantsBySongId.set(
-      song.id,
-      rows
-        .map((row) => ({
-          songId: row.id,
-          difficulty: row.difficulty,
-          rating: row.rating,
-        }))
-        .sort((a, b) => a.rating - b.rating),
-    );
+  const bySongId = new Map<number, DifficultyVariant[]>();
+  for (const row of rows) {
+    const list = bySongId.get(row.songId) ?? [];
+    list.push({
+      songId: row.id,
+      difficulty: row.difficulty,
+      rating: row.rating,
+    });
+    bySongId.set(row.songId, list);
   }
 
-  return variantsBySongId;
+  for (const variant of inputVariants) {
+    const options = (bySongId.get(variant.songId) ?? []).sort(
+      (a, b) => a.rating - b.rating,
+    );
+    variantsByVariantId.set(variant.id, options);
+  }
+
+  return variantsByVariantId;
 }

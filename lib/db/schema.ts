@@ -1,32 +1,59 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex, index } from "drizzle-orm/sqlite-core";
 
-// Example table for your app
-export const songs = sqliteTable("songs", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  type: text("type", { enum: ["single", "double"] }).notNull(),
-  folder: text("folder").notNull(), // Folder
-  title: text("title").notNull(), // Title
-  difficulty: text("difficulty").notNull(), // Difficulty
-  rating: integer("rating").notNull(), // Rating
-  song_length: integer("song_length").notNull(), // Song Length
-  display_bpm_min: integer("display_bpm_min").notNull(), // Display BPM (min)
-  display_bpm_max: integer("display_bpm_max").notNull(), // Display BPM (max)
-  bpm_changes: integer("bpm_changes").notNull(), // BPM Changes
-  artist: text("artist").notNull(), // Artist
-  notes: integer("notes").notNull(), // Notes
-  steps: integer("steps").notNull(), // Steps
-  jumps: integer("jumps").notNull(), // Jumps
-  holds: integer("holds").notNull(), // Holds
-  shock_arrows: integer("shock_arrows").notNull(), // Shock Arrows
-  max_combo_steps_shock_arrows: integer(
-    "max_combo_steps_shock_arrows",
-  ).notNull(), // Max Combo (Steps+Shock Arrows)
-  // TODO: add more based on .csv in v2
-});
+export const songs = sqliteTable(
+  "songs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    folder: text("folder").notNull(),
+    title: text("title").notNull(),
+    artist: text("artist").notNull(),
+    song_length: integer("song_length").notNull(),
+    display_bpm_min: integer("display_bpm_min").notNull(),
+    display_bpm_max: integer("display_bpm_max").notNull(),
+    bpm_changes: integer("bpm_changes").notNull(),
+  },
+  (table) => [
+    uniqueIndex("songs_title_artist_idx").on(table.title, table.artist),
+  ],
+);
 
-// Export inferred types for your Next.js frontend/backend
+export const songVariants = sqliteTable(
+  "song_variants",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    songId: integer("song_id")
+      .notNull()
+      .references(() => songs.id, { onDelete: "cascade" }),
+    type: text("type", { enum: ["single", "double"] }).notNull(),
+    difficulty: text("difficulty").notNull(),
+    rating: integer("rating").notNull(),
+    notes: integer("notes").notNull(),
+    steps: integer("steps").notNull(),
+    jumps: integer("jumps").notNull(),
+    holds: integer("holds").notNull(),
+    shock_arrows: integer("shock_arrows").notNull(),
+    max_combo_steps_shock_arrows: integer(
+      "max_combo_steps_shock_arrows",
+    ).notNull(),
+  },
+  (table) => [
+    uniqueIndex("song_variants_song_type_difficulty_idx").on(
+      table.songId,
+      table.type,
+      table.difficulty,
+    ),
+    index("song_variants_song_id_idx").on(table.songId),
+    index("song_variants_type_idx").on(table.type),
+  ],
+);
+
 export type Song = typeof songs.$inferSelect;
 export type InsertSong = typeof songs.$inferInsert;
+export type SongVariant = typeof songVariants.$inferSelect;
+export type InsertSongVariant = typeof songVariants.$inferInsert;
+
+/** Variant row joined with its parent song — used by matching and play display. */
+export type SongVariantWithSong = SongVariant & { song: Song };
 
 // ---------------------------------------------------------------------------
 // better-auth tables
@@ -97,9 +124,9 @@ export const userPlayedSongs = sqliteTable("user_played_songs", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  songId: integer("song_id")
+  songVariantId: integer("song_variant_id")
     .notNull()
-    .references(() => songs.id, { onDelete: "cascade" }),
+    .references(() => songVariants.id, { onDelete: "cascade" }),
   arcadeScore: integer("arcade_score").notNull(),
   stage: integer("stage"),
   batchId: text("batch_id"),

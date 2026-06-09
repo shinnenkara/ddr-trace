@@ -5,7 +5,7 @@ import type { UserPlayedSong } from "@/lib/db/schema";
 
 export async function getChartPlayHistory(
   userId: string,
-  songId: number,
+  songVariantId: number,
 ): Promise<UserPlayedSong[]> {
   const db = await getDb();
 
@@ -15,7 +15,7 @@ export async function getChartPlayHistory(
     .where(
       and(
         eq(userPlayedSongs.userId, userId),
-        eq(userPlayedSongs.songId, songId),
+        eq(userPlayedSongs.songVariantId, songVariantId),
       ),
     )
     .orderBy(asc(userPlayedSongs.playedAt));

@@ -15,6 +15,7 @@
     "columns": {
       "title": "Назва",
       "artist": "Виконавець",
+      "folder": "Папка",
       "type": "Тип",
       "difficulty": "Складність",
       "rating": "Рейтинг",

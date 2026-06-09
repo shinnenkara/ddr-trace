@@ -3,7 +3,7 @@ import { userPlayedSongs, type UserPlayedSong } from "@/lib/db/schema";
 
 export type InsertPlayedSongRow = {
   userId: string;
-  songId: number;
+  songVariantId: number;
   arcadeScore: number;
   stage?: number | null;
   batchId?: string | null;
@@ -23,7 +23,7 @@ export async function insertPlayedSongs(
   const db = await getDb();
   const values = rows.map((row) => ({
     userId: row.userId,
-    songId: row.songId,
+    songVariantId: row.songVariantId,
     arcadeScore: row.arcadeScore,
     stage: row.stage ?? null,
     batchId: row.batchId ?? null,

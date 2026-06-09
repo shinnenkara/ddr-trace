@@ -10,7 +10,7 @@ import { createInterface } from "node:readline";
 import path from "node:path";
 import { parseCsvLine, toColumnName } from "./csv-utils";
 
-const DATA_DIR = path.join(__dirname, "temp");
+const DATA_DIR = path.join(__dirname, "../temp");
 const FILES = {
   single: "DanceDanceRevolution Chart Data Spreadsheet - Single.csv",
   double: "DanceDanceRevolution Chart Data Spreadsheet - Double.csv",

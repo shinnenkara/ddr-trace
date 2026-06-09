@@ -45,11 +45,13 @@ export function PlayDetailClient({ play, history }: Props) {
             <Link href="/track">{dict.track.detail.back}</Link>
           </Button>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {play.song.title}
+            {play.variant.song.title}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {play.song.artist} · {formatSongType(play.song.type, dict)} ·{" "}
-            {formatDifficulty(play.song.difficulty, dict)} · ★{play.song.rating}
+            {play.variant.song.artist} ·{" "}
+            {formatSongType(play.variant.type, dict)} ·{" "}
+            {formatDifficulty(play.variant.difficulty, dict)} · ★
+            {play.variant.rating}
           </p>
         </div>
         <Button onClick={() => setIsEditing(true)}>

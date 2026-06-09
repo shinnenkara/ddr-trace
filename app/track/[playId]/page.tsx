@@ -27,7 +27,7 @@ export default async function PlayDetailPage({ params }: Props) {
     notFound();
   }
 
-  const history = await getChartPlayHistory(user.id, play.songId);
+  const history = await getChartPlayHistory(user.id, play.songVariantId);
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-10 sm:px-10">

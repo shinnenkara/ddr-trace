@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useDictionary, useLocale } from "@/lib/i18n/dictionary-provider";
-import { formatDifficulty, formatSongType } from "@/lib/i18n/song-labels";
+import { formatDifficulty } from "@/lib/i18n/song-labels";
 import {
   formatArcadeScore,
   formatPlayDateTime,
@@ -72,19 +72,19 @@ export function PlaysTable({ plays }: Props) {
                   {formatPlayDateTime(play.playedAt, locale)}
                 </TableCell>
                 <TableCell>
-                  <div className="font-medium">{play.song.title}</div>
+                  <div className="font-medium">{play.variant.song.title}</div>
                   <div className="text-xs text-muted-foreground sm:hidden">
-                    {play.song.artist} · ★{play.song.rating}
+                    {play.variant.song.artist} · ★{play.variant.rating}
                   </div>
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">
-                  {play.song.artist}
+                  {play.variant.song.artist}
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  {formatDifficulty(play.song.difficulty, dict)}
+                  {formatDifficulty(play.variant.difficulty, dict)}
                 </TableCell>
                 <TableCell className="hidden lg:table-cell">
-                  ★{play.song.rating}
+                  ★{play.variant.rating}
                 </TableCell>
                 <TableCell className="font-mono text-sm">
                   {formatArcadeScore(play.arcadeScore)}

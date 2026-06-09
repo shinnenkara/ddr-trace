@@ -1,21 +1,26 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { songs, userPlayedSongs } from "@/lib/db/schema";
-import type { PlayWithSong } from "./play-with-song";
+import { songs, songVariants, userPlayedSongs } from "@/lib/db/schema";
+import type { PlayWithVariant } from "./play-with-song";
 
 export async function getPlayById(
   playId: number,
   userId: string,
-): Promise<PlayWithSong | null> {
+): Promise<PlayWithVariant | null> {
   const db = await getDb();
 
   const rows = await db
     .select({
       play: userPlayedSongs,
+      variant: songVariants,
       song: songs,
     })
     .from(userPlayedSongs)
-    .innerJoin(songs, eq(userPlayedSongs.songId, songs.id))
+    .innerJoin(
+      songVariants,
+      eq(userPlayedSongs.songVariantId, songVariants.id),
+    )
+    .innerJoin(songs, eq(songVariants.songId, songs.id))
     .where(
       and(eq(userPlayedSongs.id, playId), eq(userPlayedSongs.userId, userId)),
     )
@@ -28,6 +33,6 @@ export async function getPlayById(
 
   return {
     ...row.play,
-    song: row.song,
+    variant: { ...row.variant, song: row.song },
   };
 }

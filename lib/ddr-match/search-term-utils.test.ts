@@ -1,25 +1,23 @@
 import { describe, expect, it } from "vitest";
-import type { Song } from "@/lib/db/schema";
+import type { SongVariantWithSong } from "@/lib/db/schema";
 import {
   collectAllSearchTerms,
   collectSearchTermsForStage,
   groupCandidatesByStage,
   longestSearchToken,
-  songMatchesSearchTerm,
+  variantMatchesSearchTerm,
 } from "./search-term-utils";
 import { makeStageVision } from "./test-helpers";
 
-function makeSong(overrides: Partial<Song> & Pick<Song, "id" | "title">): Song {
+function makeVariant(
+  overrides: Partial<SongVariantWithSong> &
+    Pick<SongVariantWithSong, "id" | "song">,
+): SongVariantWithSong {
   return {
+    songId: 1,
     type: "single",
-    folder: "folder",
     difficulty: "Expert",
     rating: 10,
-    song_length: 90,
-    display_bpm_min: 180,
-    display_bpm_max: 180,
-    bpm_changes: 0,
-    artist: "Artist",
     notes: 0,
     steps: 0,
     jumps: 0,
@@ -74,25 +72,45 @@ describe("search term utils", () => {
     ]);
   });
 
-  it("matches songs by title or artist", () => {
-    const song = makeSong({
+  it("matches variants by title or artist", () => {
+    const variant = makeVariant({
       id: 1,
-      title: "PARANOiA EVOLUTION",
-      artist: "180",
+      song: {
+        id: 1,
+        folder: "folder",
+        title: "PARANOiA EVOLUTION",
+        artist: "180",
+        song_length: 90,
+        display_bpm_min: 180,
+        display_bpm_max: 180,
+        bpm_changes: 0,
+      },
     });
-    expect(songMatchesSearchTerm(song, "paranoia")).toBe(true);
-    expect(songMatchesSearchTerm(song, "180")).toBe(true);
-    expect(songMatchesSearchTerm(song, "missing")).toBe(false);
+    expect(variantMatchesSearchTerm(variant, "paranoia")).toBe(true);
+    expect(variantMatchesSearchTerm(variant, "180")).toBe(true);
+    expect(variantMatchesSearchTerm(variant, "missing")).toBe(false);
   });
 
-  it("groups candidates per stage and dedupes by song id", () => {
-    const songs = [
-      makeSong({ id: 1, title: "PARANOiA", type: "single" }),
-      makeSong({ id: 2, title: "PARANOiA EVOLUTION", type: "single" }),
-      makeSong({ id: 1, title: "PARANOiA duplicate", type: "single" }),
+  it("groups candidates per stage and dedupes by variant id", () => {
+    const song1 = {
+      id: 1,
+      folder: "folder",
+      title: "PARANOiA",
+      artist: "Artist",
+      song_length: 90,
+      display_bpm_min: 180,
+      display_bpm_max: 180,
+      bpm_changes: 0,
+    };
+    const song2 = { ...song1, id: 2, title: "PARANOiA EVOLUTION" };
+
+    const variants = [
+      makeVariant({ id: 1, song: song1 }),
+      makeVariant({ id: 2, song: song2 }),
+      makeVariant({ id: 1, song: { ...song1, title: "PARANOiA duplicate" } }),
     ];
 
-    const grouped = groupCandidatesByStage([stage], songs);
+    const grouped = groupCandidatesByStage([stage], variants);
 
     expect(grouped).toHaveLength(1);
     expect(grouped[0]).toHaveLength(2);

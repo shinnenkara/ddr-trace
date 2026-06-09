@@ -20,7 +20,7 @@ export async function logPlayManualAction(
     const plays = await insertPlayedSongs([
       {
         userId: data.user_id,
-        songId: data.song_id,
+        songVariantId: data.song_id,
         arcadeScore: data.arcade_score,
         stage: data.stage ?? null,
         speedModifier: data.speed_modifier ?? null,
