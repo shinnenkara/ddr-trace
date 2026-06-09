@@ -188,6 +188,47 @@ describe("matchPhotoPlay", () => {
     expect(outcome.overallConfidence).toBeLessThan(0.6);
     expect(insertPlayedSongs).not.toHaveBeenCalled();
   });
+
+  it("returns empty preview when vision has no usable stages", async () => {
+    vi.mocked(parseResultsScreenVision).mockResolvedValue({
+      status: "success",
+      looks_like_ddr_results: true,
+      screen_confidence: 0.5,
+      readability: "partial",
+      stages: [
+        makeStageVision({
+          stage: 1,
+          title_candidates: [],
+        }),
+      ],
+    });
+
+    const outcome = await matchPhotoPlay(capture);
+
+    expect(outcome).toEqual({ rows: [], overallConfidence: 0 });
+    expect(resolvePlaysFromCandidates).not.toHaveBeenCalled();
+  });
+
+  it("returns empty preview when resolve throws", async () => {
+    vi.mocked(resolvePlaysFromCandidates).mockRejectedValue(
+      new Error("Couldn't match the song for stage 1"),
+    );
+
+    const outcome = await matchPhotoPlay(capture);
+
+    expect(outcome).toEqual({ rows: [], overallConfidence: 0 });
+  });
+
+  it("returns empty preview when resolve yields no plays", async () => {
+    vi.mocked(resolvePlaysFromCandidates).mockResolvedValue({
+      plays: [],
+      rankedSongsByStage: [[]],
+    });
+
+    const outcome = await matchPhotoPlay(capture);
+
+    expect(outcome).toEqual({ rows: [], overallConfidence: 0 });
+  });
 });
 
 describe("confirmPhotoMatchPlays", () => {

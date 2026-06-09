@@ -170,12 +170,12 @@
       "hintPlaceholder": "e.g. stage 3 is blurry, song title looks like…",
       "errors": {
         "notResultsScreen": "This doesn't look like a DDR results screen.",
-        "tooBlurry": "Photo is too blurry to read. Retake with the screen in focus.",
         "pickPlayerSide": "Two player scores detected — select 1P or 2P and retry.",
         "sideScoreUnreadable": "Could not read the score for the selected player side. Retake or try Auto."
       },
       "preview": {
         "title": "Review matches",
+        "noMatches": "We couldn't auto-match any songs from this photo. Retake or go back to add a hint.",
         "lowConfidence": "We're not fully confident in these matches. Review before logging.",
         "reviewHint": "Pick the correct song and difficulty for each stage, then adjust the score before logging.",
         "songLabel": "Song",

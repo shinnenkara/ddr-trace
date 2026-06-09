@@ -1,9 +1,6 @@
 export const VISION_ERROR_NOT_RESULTS =
   "This doesn't look like a DDR results screen.";
 
-export const VISION_ERROR_TOO_BLURRY =
-  "Photo is too blurry to read. Retake with the screen in focus.";
-
 export const VISION_ERROR_PICK_PLAYER_SIDE =
   "Two player scores detected — select 1P or 2P and retry.";
 

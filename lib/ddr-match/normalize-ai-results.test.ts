@@ -5,10 +5,7 @@ import {
   normalizeDdrResolvedPlays,
   stageHasExtractableSignal,
 } from "./normalize-ai-results";
-import {
-  VISION_ERROR_NOT_RESULTS,
-  VISION_ERROR_TOO_BLURRY,
-} from "./vision-errors";
+import { VISION_ERROR_NOT_RESULTS } from "./vision-errors";
 import { makeStageVision } from "./test-helpers";
 
 describe("normalizeDdrVisionParse", () => {
@@ -469,7 +466,7 @@ describe("filterUsableStages", () => {
     }
   });
 
-  it("returns transient error only when no extractable signals remain", () => {
+  it("returns success when no extractable signals remain", () => {
     const result = normalizeDdrVisionParse({
       status: "success",
       stages: [
@@ -479,10 +476,27 @@ describe("filterUsableStages", () => {
       ],
     });
 
-    expect(result).toEqual({
+    expect(result.status).toBe("success");
+    if (result.status === "success") {
+      expect(result.stages).toHaveLength(1);
+      expect(stageHasExtractableSignal(result.stages[0])).toBe(false);
+      expect(filterUsableStages(result.stages)).toHaveLength(0);
+    }
+  });
+
+  it("salvages blur error without row data to empty success", () => {
+    const result = normalizeDdrVisionParse({
       status: "error",
-      error: VISION_ERROR_TOO_BLURRY,
+      error: "Too blurry",
       error_kind: "transient",
+      readability: "unreadable",
+      stages: [],
     });
+
+    expect(result.status).toBe("success");
+    if (result.status === "success") {
+      expect(result.stages).toHaveLength(1);
+      expect(filterUsableStages(result.stages)).toHaveLength(0);
+    }
   });
 });

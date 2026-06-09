@@ -99,12 +99,18 @@ export function MatchPreviewState({
           </Dialog>
         </div>
 
-        <MatchedPlayRows
-          rows={editableRows}
-          onRowsChange={setEditableRows}
-          chartType={chartType}
-          showReviewHint
-        />
+        {editableRows.length === 0 ? (
+          <p className="px-3 text-sm text-muted-foreground">
+            {dict.logPlay.photo.preview.noMatches}
+          </p>
+        ) : (
+          <MatchedPlayRows
+            rows={editableRows}
+            onRowsChange={setEditableRows}
+            chartType={chartType}
+            showReviewHint
+          />
+        )}
       </div>
 
       {error && <p className="px-4 text-sm text-destructive">{error}</p>}
@@ -118,7 +124,10 @@ export function MatchPreviewState({
         >
           {dict.logPlay.photo.retake}
         </Button>
-        <Button onClick={() => void handleConfirm()} disabled={pending}>
+        <Button
+          onClick={() => void handleConfirm()}
+          disabled={pending || editableRows.length === 0}
+        >
           {pending
             ? dict.logPlay.photo.preview.confirming
             : dict.logPlay.photo.preview.confirm}

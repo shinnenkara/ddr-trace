@@ -19,10 +19,7 @@ import {
   resolveAmbiguousStagesHeuristic,
   type RankedSong,
 } from "./rank-candidates";
-import {
-  VISION_ERROR_TOO_BLURRY,
-  visionErrorNoSongCandidatesForStage,
-} from "./vision-errors";
+import { visionErrorNoSongCandidatesForStage } from "./vision-errors";
 import {
   buildVisionSystemPrompt,
   buildVisionUserMessageText,
@@ -214,7 +211,7 @@ export async function resolvePlaysFromCandidates(
   );
 
   if (plays.length === 0) {
-    throwAiError(VISION_ERROR_TOO_BLURRY, "transient");
+    return { plays: [], rankedSongsByStage };
   }
 
   assertCandidatesMembership(stages, candidatesByStage, plays);

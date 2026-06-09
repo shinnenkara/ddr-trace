@@ -17,14 +17,10 @@ import type { RankedSong } from "./rank-candidates";
 import {
   parseResultsScreenVision,
   resolvePlaysFromCandidates,
-  throwAiError,
 } from "./get-ai-ddr-results";
 import { searchCandidatesForVision } from "./search-candidates-for-vision";
 import { deriveStageContexts } from "./derive-stage-context";
-import {
-  filterUsableStages,
-  stageHasExtractableSignal,
-} from "./normalize-ai-results";
+import { filterUsableStages } from "./normalize-ai-results";
 import {
   buildDifficultyOptions,
   pickDefaultVariant,
@@ -35,10 +31,7 @@ import { insertPlayedSongs } from "@/lib/user-played-songs/insert-played-songs";
 import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 import { logPhotoMatchFailure } from "./log-match-failure";
 import { logPhotoMatchTrace } from "./log-match-trace";
-import {
-  MIN_SCORE_SIDE_CONFIDENCE,
-  VISION_ERROR_TOO_BLURRY,
-} from "./vision-errors";
+import { MIN_SCORE_SIDE_CONFIDENCE } from "./vision-errors";
 
 type MatchPhotoPlayOptions = {
   hint?: string | null;
@@ -199,6 +192,28 @@ function buildPreviewRows(
   return rows;
 }
 
+function emptyPreviewOutcome(
+  capture: DdrCapture,
+  vision: Extract<DdrVisionParseResult, { status: "success" }>,
+  visionStages: StageVision[],
+): PhotoMatchOutcome {
+  const screen = visionScreenContext(vision);
+
+  logPhotoMatchTrace({
+    playerSide: capture.player_side,
+    chartType: capture.chart_type,
+    screen,
+    stages: visionStages,
+    derivedContexts: [],
+    resolved: { plays: [] },
+    candidatesByStage: [],
+    overallConfidence: 0,
+    outcome: "empty_preview",
+  });
+
+  return { rows: [], overallConfidence: 0 };
+}
+
 export async function matchPhotoPlay(
   capture: DdrCapture,
   options: MatchPhotoPlayOptions = {},
@@ -211,16 +226,8 @@ export async function matchPhotoPlay(
     const usableStages = filterUsableStages(vision.stages);
     visionStages = vision.stages;
 
-    if (
-      usableStages.length === 0 ||
-      !vision.stages.some(stageHasExtractableSignal)
-    ) {
-      throwAiError(VISION_ERROR_TOO_BLURRY, "transient", {
-        userId: capture.user_id,
-        chartType: capture.chart_type,
-        playerSide: capture.player_side,
-        visionStages: vision.stages,
-      });
+    if (usableStages.length === 0) {
+      return emptyPreviewOutcome(capture, vision, vision.stages);
     }
 
     const screen = visionScreenContext(vision);
@@ -240,14 +247,35 @@ export async function matchPhotoPlay(
       after: candidates.length,
     }));
 
-    const { plays, rankedSongsByStage } = await resolvePlaysFromCandidates(
+    let plays: DdrResolvedPlay[] = [];
+    let rankedSongsByStage: RankedSong[][] = [];
+
+    try {
+      const resolved = await resolvePlaysFromCandidates(
+        usableStages,
+        derivedContexts,
+        candidatesByStage,
+        {
+          hint: options.hint ?? capture.hint,
+        },
+      );
+      plays = resolved.plays;
+      rankedSongsByStage = resolved.rankedSongsByStage;
+    } catch {
+      return emptyPreviewOutcome(capture, vision, vision.stages);
+    }
+
+    const rows = buildPreviewRows(
       usableStages,
-      derivedContexts,
+      plays,
+      rankedSongsByStage,
       candidatesByStage,
-      {
-        hint: options.hint ?? capture.hint,
-      },
+      derivedContexts,
     );
+
+    if (rows.length === 0) {
+      return emptyPreviewOutcome(capture, vision, vision.stages);
+    }
 
     const overallConfidence = computeOverallConfidence(
       derivedContexts,
@@ -255,13 +283,7 @@ export async function matchPhotoPlay(
     );
 
     const outcome: PhotoMatchOutcome = {
-      rows: buildPreviewRows(
-        usableStages,
-        plays,
-        rankedSongsByStage,
-        candidatesByStage,
-        derivedContexts,
-      ),
+      rows,
       overallConfidence,
     };
 

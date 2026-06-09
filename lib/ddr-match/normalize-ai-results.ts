@@ -14,7 +14,6 @@ import {
   MAX_BORDER_CANDIDATES_PER_PLAYER,
   MAX_TITLE_CANDIDATES_PER_STAGE,
   VISION_ERROR_NOT_RESULTS,
-  VISION_ERROR_TOO_BLURRY,
 } from "./vision-errors";
 
 function preprocessLowerString(value: unknown): unknown {
@@ -303,6 +302,24 @@ function hasRawRowSignals(
   });
 }
 
+function isBlurOrUnreadableError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("blur") ||
+    normalized.includes("unreadable") ||
+    normalized.includes("too unclear") ||
+    normalized.includes("cannot read") ||
+    normalized.includes("can't read")
+  );
+}
+
+function emptyStageVision(): StageVision {
+  return {
+    stage: 1,
+    title_candidates: [],
+  };
+}
+
 function canSalvageVisionParse(raw: DdrVisionParseGemini): boolean {
   const rawStages = raw.stages ?? [];
   return (
@@ -348,6 +365,20 @@ export function normalizeDdrVisionParse(
       throw new Error("AI returned error status without a message");
     }
 
+    if (isBlurOrUnreadableError(message)) {
+      const screen = parseScreenContext(raw);
+      return {
+        status: "success",
+        looks_like_ddr_results: true,
+        screen_confidence: clampConfidence(raw.screen_confidence ?? 0.5),
+        readability: "partial",
+        played_player: screen.played_player ?? undefined,
+        played_player_confidence: screen.played_player_confidence,
+        played_player_reason: screen.played_player_reason,
+        stages: [emptyStageVision()],
+      };
+    }
+
     return {
       status: "error",
       error: message,
@@ -373,14 +404,6 @@ export function normalizeDdrVisionParse(
   const stages = rawStages.map((stage, index) =>
     normalizeStageVision(stage, index),
   );
-
-  if (!stages.some(stageHasExtractableSignal)) {
-    return {
-      status: "error",
-      error: VISION_ERROR_TOO_BLURRY,
-      error_kind: "transient",
-    };
-  }
 
   const readability =
     raw.readability === "clear" || raw.readability === "partial"

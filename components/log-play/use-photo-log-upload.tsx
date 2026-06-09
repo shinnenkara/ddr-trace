@@ -114,7 +114,7 @@ export function usePhotoLogUpload({
         onPreview={handlePreview}
       />
     )) || <></>,
-    [PhotoLogState.MATCH_PREVIEW]: (capture && previewRows.length > 0 && (
+    [PhotoLogState.MATCH_PREVIEW]: (capture && (
       <MatchPreviewState
         capture={capture}
         rows={previewRows}

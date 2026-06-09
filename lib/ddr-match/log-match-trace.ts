@@ -14,7 +14,7 @@ type TraceContext = {
   resolved: DdrResolvedPlays;
   candidatesByStage: Array<{ before: number; after: number }>;
   overallConfidence: number;
-  outcome: "preview";
+  outcome: "preview" | "empty_preview";
 };
 
 function logPlayerStats(stats: PlayerColumnStats | null | undefined) {

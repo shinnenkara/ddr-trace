@@ -154,4 +154,11 @@ describe("resolvePlaysFromCandidates", () => {
     expect(result.rankedSongsByStage[0]).toHaveLength(1);
     expect(result.rankedSongsByStage[0][0].song_db_id).toBe(1);
   });
+
+  it("returns empty plays when resolution yields no matches", async () => {
+    const result = await resolvePlaysFromCandidates([], [], []);
+
+    expect(result.plays).toEqual([]);
+    expect(result.rankedSongsByStage).toEqual([]);
+  });
 });
