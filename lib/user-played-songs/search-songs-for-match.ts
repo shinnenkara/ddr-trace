@@ -1,5 +1,6 @@
-import { or, like, eq, and, inArray } from "drizzle-orm";
+import { or, eq, and, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db";
+import { titleOrArtistContains } from "@/lib/db/column-contains";
 import {
   songs,
   songVariants,
@@ -28,10 +29,7 @@ export async function searchSongsForMatch(
     return [];
   }
 
-  const titleMatch = or(
-    like(songs.title, `%${trimmed}%`),
-    like(songs.artist, `%${trimmed}%`),
-  );
+  const titleMatch = titleOrArtistContains(trimmed);
 
   const difficultyLabels = difficultyColor
     ? difficultyColorToLabels(difficultyColor)
@@ -73,12 +71,7 @@ export async function searchSongsByQuery(
 
   const rows = trimmed
     ? await base
-        .where(
-          or(
-            like(songs.title, `%${trimmed}%`),
-            like(songs.artist, `%${trimmed}%`),
-          ),
-        )
+        .where(titleOrArtistContains(trimmed))
         .limit(limit)
     : await base.limit(limit);
 

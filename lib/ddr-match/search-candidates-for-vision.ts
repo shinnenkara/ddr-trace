@@ -1,5 +1,6 @@
-import { or, like, eq, and } from "drizzle-orm";
+import { or, eq, and } from "drizzle-orm";
 import { getDb } from "@/lib/db";
+import { titleOrArtistContains } from "@/lib/db/column-contains";
 import { songs, songVariants } from "@/lib/db/schema";
 import type {
   ChartType,
@@ -31,10 +32,7 @@ export async function searchSongsByTerms(
   }
 
   const db = await getDb();
-  const patterns = terms.flatMap((term) => [
-    like(songs.title, `%${term}%`),
-    like(songs.artist, `%${term}%`),
-  ]);
+  const patterns = terms.map((term) => titleOrArtistContains(term));
 
   const rows = await db
     .select({ variant: songVariants, song: songs })

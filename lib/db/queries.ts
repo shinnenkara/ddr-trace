@@ -1,4 +1,5 @@
-import { asc, desc, or, like, count } from "drizzle-orm";
+import { asc, desc, count } from "drizzle-orm";
+import { titleOrArtistContains } from "./column-contains";
 import { getDb } from "./index";
 import { songs, type Song } from "./schema";
 
@@ -72,9 +73,7 @@ export async function getSongsPage(query: SongsQuery): Promise<SongsPage> {
   const sortColumn = songs[sort];
   const orderBy = order === "desc" ? desc(sortColumn) : asc(sortColumn);
 
-  const where = q
-    ? or(like(songs.title, `%${q}%`), like(songs.artist, `%${q}%`))
-    : undefined;
+  const where = q ? titleOrArtistContains(q) : undefined;
 
   const [{ total: totalCount }] = await db
     .select({ total: count() })
