@@ -209,16 +209,6 @@ describe("matchPhotoPlay", () => {
     expect(resolvePlaysFromCandidates).not.toHaveBeenCalled();
   });
 
-  it("returns empty preview when resolve throws", async () => {
-    vi.mocked(resolvePlaysFromCandidates).mockRejectedValue(
-      new Error("Couldn't match the song for stage 1"),
-    );
-
-    const outcome = await matchPhotoPlay(capture);
-
-    expect(outcome).toEqual({ rows: [], overallConfidence: 0 });
-  });
-
   it("returns empty preview when resolve yields no plays", async () => {
     vi.mocked(resolvePlaysFromCandidates).mockResolvedValue({
       plays: [],
@@ -228,6 +218,40 @@ describe("matchPhotoPlay", () => {
     const outcome = await matchPhotoPlay(capture);
 
     expect(outcome).toEqual({ rows: [], overallConfidence: 0 });
+  });
+
+  it("returns preview for double chart type", async () => {
+    const doubleCapture: DdrCapture = {
+      ...capture,
+      chart_type: "double",
+      player_side: "right",
+    };
+
+    vi.mocked(searchCandidatesForVision).mockResolvedValue([
+      variantCandidates,
+    ]);
+    vi.mocked(resolvePlaysFromCandidates).mockResolvedValue({
+      plays: [
+        {
+          song_id: 42,
+          stage: 1,
+          arcade_score: 728860,
+          match_reason: "title match",
+          resolve_confidence: 0.9,
+        },
+      ],
+      rankedSongsByStage: [[{ ...rankedSong, matchScore: 0.9 }]],
+    });
+
+    const outcome = await matchPhotoPlay(doubleCapture);
+
+    expect(searchCandidatesForVision).toHaveBeenCalledWith(
+      expect.any(Array),
+      "double",
+    );
+    expect(outcome.rows).toHaveLength(1);
+    expect(outcome.rows[0].arcadeScore).toBe(728860);
+    expect(outcome.overallConfidence).toBeGreaterThan(0);
   });
 });
 

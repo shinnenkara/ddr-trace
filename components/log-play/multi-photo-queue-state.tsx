@@ -105,6 +105,24 @@ export function MultiPhotoQueueState({
 
         if (response.data) {
           const rows = response.data.rows.map((row) => ({ ...row, playedAt }));
+
+          if (rows.length === 0) {
+            setItems((previous) =>
+              previous.map((entry) =>
+                entry.id === item.id
+                  ? {
+                      ...entry,
+                      status: "error",
+                      error: dict.logPlay.photo.multiQueue.noMatch,
+                      errorKind: undefined,
+                      rows: undefined,
+                    }
+                  : entry,
+              ),
+            );
+            return;
+          }
+
           setItems((previous) =>
             previous.map((entry) =>
               entry.id === item.id
@@ -154,7 +172,12 @@ export function MultiPhotoQueueState({
         );
       }
     },
-    [chartType, playerSide, dict.logPlay.photo.multiQueue.uploadFailed],
+    [
+      chartType,
+      playerSide,
+      dict.logPlay.photo.multiQueue.noMatch,
+      dict.logPlay.photo.multiQueue.uploadFailed,
+    ],
   );
 
   useEffect(() => {
@@ -194,7 +217,9 @@ export function MultiPhotoQueueState({
   }, [captures, uploadCapture]);
 
   const stats = useMemo(() => {
-    const success = items.filter((item) => item.status === "success").length;
+    const success = items.filter(
+      (item) => item.status === "success" && (item.rows?.length ?? 0) > 0,
+    ).length;
     const failed = items.filter((item) => item.status === "error").length;
     const completed = success + failed;
     const total = items.length;
@@ -406,9 +431,9 @@ export function MultiPhotoQueueState({
                       {item.error}
                     </p>
                   ) : null}
-                  {item.rows ? (
+                  {item.rows && item.rows.length > 0 ? (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {dict.logPlay.photo.successDescription.replace(
+                      {dict.logPlay.photo.multiQueue.matchedDescription.replace(
                         "{count}",
                         String(item.rows.length),
                       )}

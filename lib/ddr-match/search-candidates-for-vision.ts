@@ -8,7 +8,7 @@ import type {
   StageVision,
 } from "./ai-results-schema";
 import {
-  collectAllSearchTerms,
+  collectSearchTermsForStage,
   groupCandidatesByStage,
 } from "./search-term-utils";
 
@@ -48,7 +48,15 @@ export async function searchCandidatesForVision(
   stages: StageVision[],
   chartType: ChartType,
 ): Promise<ResolveCandidate[][]> {
-  const terms = collectAllSearchTerms(stages);
-  const matchedVariants = await searchSongsByTerms(terms, chartType);
-  return groupCandidatesByStage(stages, matchedVariants);
+  return Promise.all(
+    stages.map(async (stage) => {
+      const terms = collectSearchTermsForStage(stage);
+      if (terms.length === 0) {
+        return [];
+      }
+
+      const matchedVariants = await searchSongsByTerms(terms, chartType);
+      return groupCandidatesByStage([stage], matchedVariants)[0] ?? [];
+    }),
+  );
 }

@@ -19,6 +19,7 @@ import {
   resolvePlaysFromCandidates,
 } from "./get-ai-ddr-results";
 import { searchCandidatesForVision } from "./search-candidates-for-vision";
+import { filterCandidatesByDifficulty } from "./filter-candidates-by-difficulty";
 import { deriveStageContexts } from "./derive-stage-context";
 import { filterUsableStages } from "./normalize-ai-results";
 import {
@@ -242,34 +243,32 @@ export async function matchPhotoPlay(
       capture.chart_type,
     );
 
-    const candidateCounts = candidatesByStage.map((candidates) => ({
+    const filteredCandidates = filterCandidatesByDifficulty(
+      derivedContexts,
+      candidatesByStage,
+    );
+
+    const candidateCounts = candidatesByStage.map((candidates, index) => ({
       before: candidates.length,
-      after: candidates.length,
+      after: filteredCandidates[index]?.length ?? 0,
     }));
 
-    let plays: DdrResolvedPlay[] = [];
-    let rankedSongsByStage: RankedSong[][] = [];
-
-    try {
-      const resolved = await resolvePlaysFromCandidates(
-        usableStages,
-        derivedContexts,
-        candidatesByStage,
-        {
-          hint: options.hint ?? capture.hint,
-        },
-      );
-      plays = resolved.plays;
-      rankedSongsByStage = resolved.rankedSongsByStage;
-    } catch {
-      return emptyPreviewOutcome(capture, vision, vision.stages);
-    }
+    const resolved = await resolvePlaysFromCandidates(
+      usableStages,
+      derivedContexts,
+      filteredCandidates,
+      {
+        hint: options.hint ?? capture.hint,
+      },
+    );
+    const plays = resolved.plays;
+    const rankedSongsByStage = resolved.rankedSongsByStage;
 
     const rows = buildPreviewRows(
       usableStages,
       plays,
       rankedSongsByStage,
-      candidatesByStage,
+      filteredCandidates,
       derivedContexts,
     );
 

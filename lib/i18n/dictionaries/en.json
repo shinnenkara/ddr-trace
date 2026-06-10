@@ -213,7 +213,9 @@
         "logAll": "Log all",
         "logging": "Logging…",
         "back": "Back",
-        "noMatches": "No photos could be matched. Retake and try again."
+        "noMatches": "No photos could be matched. Retake and try again.",
+        "noMatch": "No songs could be matched from this photo.",
+        "matchedDescription": "Matched {count} song(s) from this photo."
       }
     }
   },

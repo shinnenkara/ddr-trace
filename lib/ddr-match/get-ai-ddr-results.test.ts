@@ -11,7 +11,6 @@ import {
   makeDerivedStageContext,
   makeStageVision,
 } from "./test-helpers";
-import { visionErrorNoSongCandidatesForStage } from "./vision-errors";
 
 const promptsDir = join(dirname(fileURLToPath(import.meta.url)), "prompts");
 
@@ -52,7 +51,7 @@ describe("vision prompt", () => {
 });
 
 describe("resolvePlaysFromCandidates", () => {
-  it("fails cleanly when an ambiguous stage has no database candidates", async () => {
+  it("skips ambiguous stages with no database candidates", async () => {
     const stage = makeStageVision({
       stage: 3,
       title_candidates: [
@@ -79,22 +78,121 @@ describe("resolvePlaysFromCandidates", () => {
       },
     });
 
-    await expect(
-      resolvePlaysFromCandidates(
-        [stage],
-        [
-          makeDerivedStageContext({
-            stage: 3,
-            selected_player: "p2",
-            score: 871840,
-            difficulty_color: "red",
-            difficulty_border_confidence: 0.95,
-            difficulty_border_reason: "red strip beside grade",
-          }),
+    const result = await resolvePlaysFromCandidates(
+      [stage],
+      [
+        makeDerivedStageContext({
+          stage: 3,
+          selected_player: "p2",
+          score: 871840,
+          difficulty_color: "red",
+          difficulty_border_confidence: 0.95,
+          difficulty_border_reason: "red strip beside grade",
+        }),
+      ],
+      [[]],
+    );
+
+    expect(result.plays).toEqual([]);
+  });
+
+  it("returns partial plays when one stage has no candidates", async () => {
+    const stage1 = makeStageVision({
+      stage: 1,
+      title_candidates: [
+        { title: "ルミナスデイズ", confidence: 0.95, short_reason: "clear" },
+      ],
+      p2: {
+        score: 860450,
+        difficulty_border: [
+          { color: "red", confidence: 0.95, short_reason: "strip" },
         ],
-        [[]],
-      ),
-    ).rejects.toThrow(visionErrorNoSongCandidatesForStage(3));
+      },
+    });
+    const stage2 = makeStageVision({
+      stage: 2,
+      title_candidates: [
+        {
+          title: "おーまい！らぶりー！すうぃーてぃ！だーりん！",
+          confidence: 0.9,
+          short_reason: "long title",
+        },
+      ],
+      p2: {
+        score: 812830,
+        difficulty_border: [
+          { color: "red", confidence: 0.95, short_reason: "strip" },
+        ],
+      },
+    });
+    const stage3 = makeStageVision({
+      stage: 3,
+      title_candidates: [
+        { title: "ですとろいやー", confidence: 0.85, short_reason: "ocr" },
+      ],
+      p2: {
+        score: 798490,
+        difficulty_border: [
+          { color: "red", confidence: 0.95, short_reason: "strip" },
+        ],
+      },
+    });
+
+    const candidates = [
+      [
+        {
+          song_id: 101,
+          song_db_id: 10,
+          title: "ルミナスデイズ | Luminous days",
+          artist: "Artist",
+          difficulty: "Difficult",
+          rating: 9,
+        },
+      ],
+      [
+        {
+          song_id: 201,
+          song_db_id: 20,
+          title:
+            "おーまい！らぶりー！すうぃーてぃ！だーりん！ | Oh my! lovely! sweety! darling!",
+          artist: "Artist",
+          difficulty: "Difficult",
+          rating: 9,
+        },
+      ],
+      [],
+    ];
+
+    const result = await resolvePlaysFromCandidates(
+      [stage1, stage2, stage3],
+      [
+        makeDerivedStageContext({
+          stage: 1,
+          selected_player: "p2",
+          score: 860450,
+          difficulty_color: "red",
+          difficulty_border_confidence: 0.95,
+        }),
+        makeDerivedStageContext({
+          stage: 2,
+          selected_player: "p2",
+          score: 812830,
+          difficulty_color: "red",
+          difficulty_border_confidence: 0.95,
+        }),
+        makeDerivedStageContext({
+          stage: 3,
+          selected_player: "p2",
+          score: 798490,
+          difficulty_color: "red",
+          difficulty_border_confidence: 0.95,
+        }),
+      ],
+      candidates,
+    );
+
+    expect(result.plays).toHaveLength(2);
+    expect(result.plays.map((play) => play.stage)).toEqual([1, 2]);
   });
 
   it("resolves ambiguous stages with heuristic ranking", async () => {

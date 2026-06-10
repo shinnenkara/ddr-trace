@@ -19,7 +19,6 @@ import {
   resolveAmbiguousStagesHeuristic,
   type RankedSong,
 } from "./rank-candidates";
-import { visionErrorNoSongCandidatesForStage } from "./vision-errors";
 import {
   buildVisionSystemPrompt,
   buildVisionUserMessageText,
@@ -172,19 +171,33 @@ function assertCandidatesMembership(
   }
 }
 
-function assertAmbiguousStagesHaveCandidates(
+function filterAmbiguousStagesWithCandidates(
   ambiguousStages: StageVision[],
+  ambiguousDerived: DerivedStageContext[],
   ambiguousCandidates: ResolveCandidate[][],
-): void {
+): {
+  stages: StageVision[];
+  derived: DerivedStageContext[];
+  candidates: ResolveCandidate[][];
+  skippedStages: number[];
+} {
+  const stages: StageVision[] = [];
+  const derived: DerivedStageContext[] = [];
+  const candidates: ResolveCandidate[][] = [];
+  const skippedStages: number[] = [];
+
   for (let index = 0; index < ambiguousStages.length; index++) {
-    const candidates = ambiguousCandidates[index] ?? [];
-    if (candidates.length === 0) {
-      const stage = ambiguousStages[index].stage;
-      throwAiError(visionErrorNoSongCandidatesForStage(stage), "transient", {
-        stage,
-      });
+    const stageCandidates = ambiguousCandidates[index] ?? [];
+    if (stageCandidates.length === 0) {
+      skippedStages.push(ambiguousStages[index].stage);
+      continue;
     }
+    stages.push(ambiguousStages[index]);
+    derived.push(ambiguousDerived[index]);
+    candidates.push(stageCandidates);
   }
+
+  return { stages, derived, candidates, skippedStages };
 }
 
 export async function resolvePlaysFromCandidates(
@@ -198,12 +211,28 @@ export async function resolvePlaysFromCandidates(
   const { resolved, ambiguousStages, ambiguousDerived, ambiguousCandidates } =
     tryDeterministicResolve(stages, derivedContexts, candidatesByStage);
 
-  assertAmbiguousStagesHaveCandidates(ambiguousStages, ambiguousCandidates);
-
-  const heuristicResolved = resolveAmbiguousStagesHeuristic(
+  const {
+    stages: resolvableStages,
+    derived: resolvableDerived,
+    candidates: resolvableCandidates,
+    skippedStages,
+  } = filterAmbiguousStagesWithCandidates(
     ambiguousStages,
     ambiguousDerived,
     ambiguousCandidates,
+  );
+
+  if (skippedStages.length > 0) {
+    console.warn(
+      "[photo-match] skipped stages with no DB candidates",
+      JSON.stringify({ stages: skippedStages }),
+    );
+  }
+
+  const heuristicResolved = resolveAmbiguousStagesHeuristic(
+    resolvableStages,
+    resolvableDerived,
+    resolvableCandidates,
   );
 
   const plays = [...resolved, ...heuristicResolved].sort(
