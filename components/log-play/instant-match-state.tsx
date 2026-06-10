@@ -24,6 +24,8 @@ type Props = {
     rows: PreviewPlayRow[];
     overallConfidence: number;
     chartType: ChartType;
+    hint?: string;
+    playerSide: PlayerSide;
   }) => void;
 };
 
@@ -38,13 +40,19 @@ export function InstantMatchState({
   const [playerSide, setPlayerSide] = useState<PlayerSide>("auto");
   const { submit, error, pending } = useInstantLogPlay({ onPreview });
 
+  const matchOptions = {
+    hint: hint.trim() || undefined,
+    chartType,
+    playerSide,
+  };
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    void submit(capture, {
-      hint: hint.trim() || undefined,
-      chartType,
-      playerSide,
-    });
+    void submit(capture, matchOptions);
+  };
+
+  const handleRetry = () => {
+    void submit(capture, matchOptions);
   };
 
   return (
@@ -105,9 +113,19 @@ export function InstantMatchState({
         >
           {dict.logPlay.photo.retake}
         </Button>
-        <Button type="submit" disabled={pending}>
-          {pending ? dict.logPlay.photo.matching : dict.logPlay.photo.match}
-        </Button>
+        {error ? (
+          <Button
+            type="button"
+            disabled={pending}
+            onClick={handleRetry}
+          >
+            {pending ? dict.logPlay.photo.matching : dict.logPlay.photo.retry}
+          </Button>
+        ) : (
+          <Button type="submit" disabled={pending}>
+            {pending ? dict.logPlay.photo.matching : dict.logPlay.photo.match}
+          </Button>
+        )}
       </DrawerFooter>
     </form>
   );

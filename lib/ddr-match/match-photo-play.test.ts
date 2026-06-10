@@ -206,6 +206,7 @@ describe("matchPhotoPlay", () => {
     const outcome = await matchPhotoPlay(capture);
 
     expect(outcome).toEqual({ rows: [], overallConfidence: 0 });
+    expect(parseResultsScreenVision).toHaveBeenCalledTimes(3);
     expect(resolvePlaysFromCandidates).not.toHaveBeenCalled();
   });
 
@@ -218,6 +219,103 @@ describe("matchPhotoPlay", () => {
     const outcome = await matchPhotoPlay(capture);
 
     expect(outcome).toEqual({ rows: [], overallConfidence: 0 });
+    expect(parseResultsScreenVision).toHaveBeenCalledTimes(3);
+  });
+
+  it("retries empty results and succeeds on the second attempt", async () => {
+    vi.useFakeTimers();
+
+    vi.mocked(parseResultsScreenVision).mockResolvedValue({
+      status: "success",
+      looks_like_ddr_results: true,
+      screen_confidence: 0.9,
+      readability: "partial",
+      stages: [stage],
+    });
+    vi.mocked(resolvePlaysFromCandidates)
+      .mockResolvedValueOnce({
+        plays: [],
+        rankedSongsByStage: [[]],
+      })
+      .mockResolvedValueOnce({
+        plays: [
+          {
+            song_id: 42,
+            stage: 1,
+            arcade_score: 837760,
+            match_reason: "title match",
+            resolve_confidence: 0.95,
+          },
+        ],
+        rankedSongsByStage: [[rankedSong]],
+      });
+
+    const outcomePromise = matchPhotoPlay(capture);
+    await vi.runAllTimersAsync();
+    const outcome = await outcomePromise;
+
+    expect(outcome.rows).toHaveLength(1);
+    expect(parseResultsScreenVision).toHaveBeenCalledTimes(2);
+    expect(parseResultsScreenVision).toHaveBeenNthCalledWith(1, capture, {
+      seed: 0,
+    });
+    expect(parseResultsScreenVision).toHaveBeenNthCalledWith(2, capture, {
+      seed: 1,
+    });
+
+    vi.useRealTimers();
+  });
+
+  it("retries transient errors and succeeds on the second attempt", async () => {
+    vi.useFakeTimers();
+
+    const transientError = new Error("Vision service unavailable") as Error & {
+      errorKind: "transient";
+    };
+    transientError.errorKind = "transient";
+
+    vi.mocked(parseResultsScreenVision)
+      .mockRejectedValueOnce(transientError)
+      .mockResolvedValueOnce({
+        status: "success",
+        looks_like_ddr_results: true,
+        screen_confidence: 0.9,
+        readability: "partial",
+        stages: [stage],
+      });
+    vi.mocked(resolvePlaysFromCandidates).mockResolvedValue({
+      plays: [
+        {
+          song_id: 42,
+          stage: 1,
+          arcade_score: 837760,
+          match_reason: "title match",
+          resolve_confidence: 0.95,
+        },
+      ],
+      rankedSongsByStage: [[rankedSong]],
+    });
+
+    const outcomePromise = matchPhotoPlay(capture);
+    await vi.runAllTimersAsync();
+    const outcome = await outcomePromise;
+
+    expect(outcome.rows).toHaveLength(1);
+    expect(parseResultsScreenVision).toHaveBeenCalledTimes(2);
+
+    vi.useRealTimers();
+  });
+
+  it("does not retry content errors", async () => {
+    const contentError = new Error("Image is too blurry") as Error & {
+      errorKind: "content";
+    };
+    contentError.errorKind = "content";
+
+    vi.mocked(parseResultsScreenVision).mockRejectedValue(contentError);
+
+    await expect(matchPhotoPlay(capture)).rejects.toThrow("Image is too blurry");
+    expect(parseResultsScreenVision).toHaveBeenCalledTimes(1);
   });
 
   it("returns preview for double chart type", async () => {

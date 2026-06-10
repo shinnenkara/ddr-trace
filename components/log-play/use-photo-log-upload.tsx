@@ -14,7 +14,7 @@ import {
   type MultiUploadItem,
 } from "@/components/log-play/multi-upload-item";
 import { useDictionary } from "@/lib/i18n/dictionary-provider";
-import type { ChartType } from "@/lib/ddr-match/ai-results-schema";
+import type { ChartType, PlayerSide } from "@/lib/ddr-match/ai-results-schema";
 import type { PreviewPlayRow } from "@/lib/ddr-match/photo-match-outcome";
 import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 
@@ -43,6 +43,8 @@ export function usePhotoLogUpload({
   const [capture, setCapture] = useState<CapturedImage>();
   const [previewRows, setPreviewRows] = useState<PreviewPlayRow[]>([]);
   const [previewChartType, setPreviewChartType] = useState<ChartType>("single");
+  const [previewHint, setPreviewHint] = useState<string>();
+  const [previewPlayerSide, setPreviewPlayerSide] = useState<PlayerSide>("auto");
   const [multiCaptures, setMultiCaptures] = useState<MultiUploadItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -64,9 +66,13 @@ export function usePhotoLogUpload({
     rows: PreviewPlayRow[];
     overallConfidence: number;
     chartType: ChartType;
+    hint?: string;
+    playerSide: PlayerSide;
   }) => {
     setPreviewRows(payload.rows);
     setPreviewChartType(payload.chartType);
+    setPreviewHint(payload.hint);
+    setPreviewPlayerSide(payload.playerSide);
     setState(PhotoLogState.MATCH_PREVIEW);
   };
 
@@ -119,6 +125,8 @@ export function usePhotoLogUpload({
         capture={capture}
         rows={previewRows}
         chartType={previewChartType}
+        hint={previewHint}
+        playerSide={previewPlayerSide}
         onRetake={handleRetake}
         onMatch={onMatch}
       />

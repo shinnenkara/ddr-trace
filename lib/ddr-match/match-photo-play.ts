@@ -34,9 +34,44 @@ import { logPhotoMatchFailure } from "./log-match-failure";
 import { logPhotoMatchTrace } from "./log-match-trace";
 import { MIN_SCORE_SIDE_CONFIDENCE } from "./vision-errors";
 
+const MAX_MATCH_ATTEMPTS = 3;
+const RETRY_BACKOFF_MS = [200, 500];
+
 type MatchPhotoPlayOptions = {
   hint?: string | null;
 };
+
+type MatchAttemptTrace = {
+  attempt: number;
+  maxAttempts: number;
+};
+
+type EmptyMatchAttempt = {
+  kind: "empty";
+  vision: Extract<DdrVisionParseResult, { status: "success" }>;
+  visionStages: StageVision[];
+  visionStagesForFailure: StageVision[];
+};
+
+type SuccessMatchAttempt = {
+  kind: "success";
+  outcome: PhotoMatchOutcome;
+};
+
+type MatchAttemptResult = EmptyMatchAttempt | SuccessMatchAttempt;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function isContentError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    (err as Error & { errorKind?: string }).errorKind === "content"
+  );
+}
 
 function visionTitleForStage(stage: StageVision): string | undefined {
   return stage.title_candidates[0]?.title;
@@ -197,6 +232,7 @@ function emptyPreviewOutcome(
   capture: DdrCapture,
   vision: Extract<DdrVisionParseResult, { status: "success" }>,
   visionStages: StageVision[],
+  trace: MatchAttemptTrace,
 ): PhotoMatchOutcome {
   const screen = visionScreenContext(vision);
 
@@ -210,104 +246,176 @@ function emptyPreviewOutcome(
     candidatesByStage: [],
     overallConfidence: 0,
     outcome: "empty_preview",
+    attempt: trace.attempt,
+    maxAttempts: trace.maxAttempts,
   });
 
   return { rows: [], overallConfidence: 0 };
+}
+
+async function runMatchAttempt(
+  capture: DdrCapture,
+  options: MatchPhotoPlayOptions,
+  attemptIndex: number,
+  trace: MatchAttemptTrace,
+): Promise<MatchAttemptResult> {
+  const vision = await parseResultsScreenVision(capture, {
+    seed: attemptIndex,
+  });
+
+  const usableStages = filterUsableStages(vision.stages);
+  const visionStagesForFailure = vision.stages;
+
+  if (usableStages.length === 0) {
+    return {
+      kind: "empty",
+      vision,
+      visionStages: vision.stages,
+      visionStagesForFailure,
+    };
+  }
+
+  const screen = visionScreenContext(vision);
+  const derivedContexts = deriveStageContexts(
+    usableStages,
+    capture.player_side,
+    screen,
+  );
+
+  const candidatesByStage = await searchCandidatesForVision(
+    usableStages,
+    capture.chart_type,
+  );
+
+  const filteredCandidates = filterCandidatesByDifficulty(
+    derivedContexts,
+    candidatesByStage,
+  );
+
+  const candidateCounts = candidatesByStage.map((candidates, index) => ({
+    before: candidates.length,
+    after: filteredCandidates[index]?.length ?? 0,
+  }));
+
+  const resolved = await resolvePlaysFromCandidates(
+    usableStages,
+    derivedContexts,
+    filteredCandidates,
+    {
+      hint: options.hint ?? capture.hint,
+    },
+  );
+  const plays = resolved.plays;
+  const rankedSongsByStage = resolved.rankedSongsByStage;
+
+  const rows = buildPreviewRows(
+    usableStages,
+    plays,
+    rankedSongsByStage,
+    filteredCandidates,
+    derivedContexts,
+  );
+
+  if (rows.length === 0) {
+    return {
+      kind: "empty",
+      vision,
+      visionStages: vision.stages,
+      visionStagesForFailure,
+    };
+  }
+
+  const overallConfidence = computeOverallConfidence(derivedContexts, plays);
+
+  const outcome: PhotoMatchOutcome = {
+    rows,
+    overallConfidence,
+  };
+
+  logPhotoMatchTrace({
+    playerSide: capture.player_side,
+    chartType: capture.chart_type,
+    screen,
+    stages: usableStages,
+    derivedContexts,
+    resolved: { plays },
+    candidatesByStage: candidateCounts,
+    overallConfidence,
+    outcome: "preview",
+    attempt: trace.attempt,
+    maxAttempts: trace.maxAttempts,
+  });
+
+  return { kind: "success", outcome };
 }
 
 export async function matchPhotoPlay(
   capture: DdrCapture,
   options: MatchPhotoPlayOptions = {},
 ): Promise<PhotoMatchOutcome> {
-  let visionStages: StageVision[] | undefined;
+  let lastEmpty: EmptyMatchAttempt | undefined;
+  let lastError: unknown;
+  let visionStagesForFailure: StageVision[] | undefined;
 
-  try {
-    const vision = await parseResultsScreenVision(capture);
-
-    const usableStages = filterUsableStages(vision.stages);
-    visionStages = vision.stages;
-
-    if (usableStages.length === 0) {
-      return emptyPreviewOutcome(capture, vision, vision.stages);
+  for (let attempt = 0; attempt < MAX_MATCH_ATTEMPTS; attempt++) {
+    if (attempt > 0) {
+      await sleep(RETRY_BACKOFF_MS[attempt - 1] ?? 500);
     }
 
-    const screen = visionScreenContext(vision);
-    const derivedContexts = deriveStageContexts(
-      usableStages,
-      capture.player_side,
-      screen,
-    );
-
-    const candidatesByStage = await searchCandidatesForVision(
-      usableStages,
-      capture.chart_type,
-    );
-
-    const filteredCandidates = filterCandidatesByDifficulty(
-      derivedContexts,
-      candidatesByStage,
-    );
-
-    const candidateCounts = candidatesByStage.map((candidates, index) => ({
-      before: candidates.length,
-      after: filteredCandidates[index]?.length ?? 0,
-    }));
-
-    const resolved = await resolvePlaysFromCandidates(
-      usableStages,
-      derivedContexts,
-      filteredCandidates,
-      {
-        hint: options.hint ?? capture.hint,
-      },
-    );
-    const plays = resolved.plays;
-    const rankedSongsByStage = resolved.rankedSongsByStage;
-
-    const rows = buildPreviewRows(
-      usableStages,
-      plays,
-      rankedSongsByStage,
-      filteredCandidates,
-      derivedContexts,
-    );
-
-    if (rows.length === 0) {
-      return emptyPreviewOutcome(capture, vision, vision.stages);
-    }
-
-    const overallConfidence = computeOverallConfidence(
-      derivedContexts,
-      plays,
-    );
-
-    const outcome: PhotoMatchOutcome = {
-      rows,
-      overallConfidence,
+    const trace: MatchAttemptTrace = {
+      attempt: attempt + 1,
+      maxAttempts: MAX_MATCH_ATTEMPTS,
     };
 
-    logPhotoMatchTrace({
-      playerSide: capture.player_side,
-      chartType: capture.chart_type,
-      screen,
-      stages: usableStages,
-      derivedContexts,
-      resolved: { plays },
-      candidatesByStage: candidateCounts,
-      overallConfidence,
-      outcome: "preview",
-    });
+    try {
+      const result = await runMatchAttempt(capture, options, attempt, trace);
 
-    return outcome;
-  } catch (err) {
-    logPhotoMatchFailure(err, {
+      if (result.kind === "success") {
+        return result.outcome;
+      }
+
+      lastEmpty = result;
+      lastError = undefined;
+      visionStagesForFailure = result.visionStagesForFailure;
+    } catch (err) {
+      if (isContentError(err)) {
+        logPhotoMatchFailure(err, {
+          userId: capture.user_id,
+          chartType: capture.chart_type,
+          playerSide: capture.player_side,
+          visionStages: visionStagesForFailure,
+        });
+        throw err;
+      }
+
+      lastError = err;
+      lastEmpty = undefined;
+    }
+  }
+
+  if (lastError) {
+    logPhotoMatchFailure(lastError, {
       userId: capture.user_id,
       chartType: capture.chart_type,
       playerSide: capture.player_side,
-      visionStages,
+      visionStages: visionStagesForFailure,
     });
-    throw err;
+    throw lastError;
   }
+
+  if (lastEmpty) {
+    return emptyPreviewOutcome(
+      capture,
+      lastEmpty.vision,
+      lastEmpty.visionStages,
+      {
+        attempt: MAX_MATCH_ATTEMPTS,
+        maxAttempts: MAX_MATCH_ATTEMPTS,
+      },
+    );
+  }
+
+  throw new Error("Match pipeline finished without a result");
 }
 
 export async function confirmPhotoMatchPlays(

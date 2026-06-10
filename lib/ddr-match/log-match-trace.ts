@@ -15,6 +15,8 @@ type TraceContext = {
   candidatesByStage: Array<{ before: number; after: number }>;
   overallConfidence: number;
   outcome: "preview" | "empty_preview";
+  attempt?: number;
+  maxAttempts?: number;
 };
 
 function logPlayerStats(stats: PlayerColumnStats | null | undefined) {
@@ -41,6 +43,8 @@ export function logPhotoMatchTrace(context: TraceContext): void {
       chartType: context.chartType,
       mode: context.outcome,
       overallConfidence: context.overallConfidence,
+      attempt: context.attempt,
+      maxAttempts: context.maxAttempts,
       played_player: context.screen?.played_player ?? null,
       played_player_confidence:
         context.screen?.played_player_confidence ?? null,

@@ -13,9 +13,10 @@ import {
 import { MatchedPlayRows } from "@/components/log-play/matched-play-rows";
 import { buildDdrCaptureFormData } from "@/components/log-play/build-ddr-capture-form-data";
 import { confirmPhotoMatchAction } from "@/lib/user-played-songs/confirm-photo-match-action";
+import { previewPhotoMatchAction } from "@/lib/user-played-songs/preview-photo-match-action";
 import { useDictionary } from "@/lib/i18n/dictionary-provider";
 import type { CapturedImage } from "@/components/capture/use-capture-image";
-import type { ChartType } from "@/lib/ddr-match/ai-results-schema";
+import type { ChartType, PlayerSide } from "@/lib/ddr-match/ai-results-schema";
 import type { PreviewPlayRow } from "@/lib/ddr-match/photo-match-outcome";
 import type { LogPlayResult } from "@/lib/user-played-songs/user-played-song";
 
@@ -23,6 +24,8 @@ type Props = {
   capture: CapturedImage;
   rows: PreviewPlayRow[];
   chartType: ChartType;
+  hint?: string;
+  playerSide: PlayerSide;
   onRetake: () => void;
   onMatch: (result: LogPlayResult) => void;
 };
@@ -31,11 +34,14 @@ export function MatchPreviewState({
   capture,
   rows,
   chartType,
+  hint,
+  playerSide,
   onRetake,
   onMatch,
 }: Props) {
   const dict = useDictionary();
   const [pending, setPending] = useState(false);
+  const [retryPending, setRetryPending] = useState(false);
   const [error, setError] = useState<string>();
   const [editableRows, setEditableRows] = useState<PreviewPlayRow[]>(rows);
 
@@ -62,6 +68,36 @@ export function MatchPreviewState({
       setPending(false);
     }
   };
+
+  const handleRetryMatch = async () => {
+    setRetryPending(true);
+    setError(undefined);
+
+    try {
+      const formData = buildDdrCaptureFormData(capture, {
+        hint,
+        chartType,
+        playerSide,
+      });
+      const result = await previewPhotoMatchAction({}, formData);
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      if (result.data) {
+        setEditableRows(result.data.rows);
+      }
+    } catch {
+      setError("Something went wrong");
+    } finally {
+      setRetryPending(false);
+    }
+  };
+
+  const isBusy = pending || retryPending;
+  const hasMatches = editableRows.length > 0;
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
@@ -99,7 +135,7 @@ export function MatchPreviewState({
           </Dialog>
         </div>
 
-        {editableRows.length === 0 ? (
+        {!hasMatches ? (
           <p className="px-3 text-sm text-muted-foreground">
             {dict.logPlay.photo.preview.noMatches}
           </p>
@@ -119,19 +155,31 @@ export function MatchPreviewState({
         <Button
           onClick={onRetake}
           variant="outline"
-          disabled={pending}
+          disabled={isBusy}
           type="button"
         >
           {dict.logPlay.photo.retake}
         </Button>
-        <Button
-          onClick={() => void handleConfirm()}
-          disabled={pending || editableRows.length === 0}
-        >
-          {pending
-            ? dict.logPlay.photo.preview.confirming
-            : dict.logPlay.photo.preview.confirm}
-        </Button>
+        {hasMatches ? (
+          <Button
+            onClick={() => void handleConfirm()}
+            disabled={isBusy}
+          >
+            {pending
+              ? dict.logPlay.photo.preview.confirming
+              : dict.logPlay.photo.preview.confirm}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            disabled={isBusy}
+            onClick={() => void handleRetryMatch()}
+          >
+            {retryPending
+              ? dict.logPlay.photo.matching
+              : dict.logPlay.photo.retry}
+          </Button>
+        )}
       </DrawerFooter>
     </div>
   );

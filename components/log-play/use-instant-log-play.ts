@@ -10,6 +10,8 @@ type PreviewPayload = {
   rows: PreviewPlayRow[];
   overallConfidence: number;
   chartType: ChartType;
+  hint?: string;
+  playerSide: PlayerSide;
 };
 
 type Props = {
@@ -54,6 +56,8 @@ export function useInstantLogPlay({ onPreview }: Props) {
             rows: result.data.rows,
             overallConfidence: result.data.overallConfidence,
             chartType,
+            hint: options.hint,
+            playerSide: options.playerSide ?? "auto",
           });
         }
       } catch {

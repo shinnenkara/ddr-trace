@@ -156,6 +156,7 @@
       "selectFile": "Upload photo",
       "capture": "Capture",
       "retake": "Retake",
+      "retry": "Retry",
       "match": "Match & log",
       "matching": "Matching…",
       "loadingCamera": "Loading camera…",
